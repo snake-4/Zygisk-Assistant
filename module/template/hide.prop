@@ -1,0 +1,16 @@
+ro.boot.vbmeta.device_state=locked
+ro.boot.verifiedbootstate=green
+ro.boot.flash.locked=1
+ro.boot.veritymode=enforcing
+ro.boot.warranty_bit=0
+ro.warranty_bit=0
+ro.debuggable=0
+ro.secure=1
+ro.adb.secure=1
+ro.build.type=user
+ro.build.tags=release-keys
+ro.vendor.boot.warranty_bit=0
+ro.vendor.warranty_bit=0
+vendor.boot.vbmeta.device_state=locked
+vendor.boot.verifiedbootstate=green
+ro.secureboot.lockstate=locked

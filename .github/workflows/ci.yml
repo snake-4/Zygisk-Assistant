@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+    tags: [ v* ]
+  pull_request:
+  merge_group:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
+      CCACHE_BASEDIR: "${{ github.workspace }}"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-home-cache-cleanup: true
+
+      - name: Build with Gradle
+        run: |
+          chmod 777 ./gradlew
+          ./gradlew zipRelease
+          ./gradlew zipDebug
+
+      - name: Prepare artifact
+        if: success()
+        id: prepareArtifact
+        run: |
+          releaseName=`ls module/build/outputs/release/Zygisk-Qingyue-v*-release.zip | awk -F '(/|.zip)' '{print $5}'` && echo "releaseName=$releaseName" >> $GITHUB_OUTPUT
+          debugName=`ls module/build/outputs/release/Zygisk-Qingyue-v*-debug.zip | awk -F '(/|.zip)' '{print $5}'` && echo "debugName=$debugName" >> $GITHUB_OUTPUT
+          unzip module/build/outputs/release/Zygisk-Qingyue-v*-release.zip -d qingyue-release
+          unzip module/build/outputs/release/Zygisk-Qingyue-v*-debug.zip -d qingyue-debug
+
+      - name: Upload release
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.prepareArtifact.outputs.releaseName }}
+          path: "./qingyue-release/*"
+
+      - name: Upload debug
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.prepareArtifact.outputs.debugName }}
+          path: "./qingyue-debug/*"
