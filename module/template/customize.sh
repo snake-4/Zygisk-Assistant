@@ -1,5 +1,8 @@
 SKIPUNZIP=1
 
+DEBUG=@DEBUG@
+SONAME=@SONAME@
+
 if [ "$BOOTMODE" ] && [ "$APATCH" ]; then
   ui_print "- Installing from APatch app"
 else
@@ -33,5 +36,8 @@ extract "$ZIPFILE" "hide.prop" "$MODPATH"
 
 chmod -R 755 "$MODPATH/*"
 
+mkdir "$MODPATH/zygisk"
+
 ui_print "- Extracting arm64 libraries"
-extract "$ZIPFILE" "libs/arm64-v8a.so" "$MODPATH" true
+extract "$ZIPFILE" "lib/arm64-v8a/lib$SONAME.so" "$MODPATH/zygisk" true
+mv "$MODPATH/zygisk/lib$SONAME.so" "$MODPATH/zygisk/arm64-v8a.so"

@@ -22,7 +22,7 @@ android {
         }
         externalNativeBuild {
             ndkBuild {
-                arguments("qingyue=$moduleId")
+                arguments("MODULE_NAME=$moduleId")
             }
         }
     }
