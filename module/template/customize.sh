@@ -30,9 +30,7 @@ extract "$ZIPFILE" 'verify.sh'     "$TMPDIR/.vunzip"
 ui_print "- Extracting module files"
 extract "$ZIPFILE" 'module.prop'     "$MODPATH"
 extract "$ZIPFILE" "credits" "$MODPATH"
-extract "$ZIPFILE" "service.sh" "$MODPATH"
 extract "$ZIPFILE" "boot-completed.sh" "$MODPATH"
-extract "$ZIPFILE" "hide.prop" "$MODPATH"
 
 chmod -R 755 "$MODPATH/*"
 
