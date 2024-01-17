@@ -37,11 +37,15 @@ public:
             return;
         }
 
-        if (flags & zygisk::StateFlag::PROCESS_ON_DENYLIST) {
-
+        if ((flags & zygisk::PROCESS_ON_DENYLIST) && args->uid > 1000) {
             api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
         }
+        api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
         return;
+    }
+
+    void preServerSpecialize(ServerSpecializeArgs *args) override {
+        api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
     }
 
 private:
