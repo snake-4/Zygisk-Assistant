@@ -1,16 +1,6 @@
 SKIPUNZIP=1
 
-DEBUG=@DEBUG@
 SONAME=@SONAME@
-
-if [ "$BOOTMODE" ] && [ "$APATCH" ]; then
-  ui_print "- Installing from APatch app"
-else
-  ui_print "*********************************************************"
-  ui_print "! Install from recovery is not supported"
-  ui_print "! Please install from APatch app"
-  abort    "*********************************************************"
-fi
 
 VERSION=$(grep_prop version "${TMPDIR}/module.prop")
 ui_print "- Installing $SONAME $VERSION"
