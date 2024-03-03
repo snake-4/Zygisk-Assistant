@@ -3,4 +3,4 @@ name=${moduleName}
 version=${versionName}
 versionCode=${versionCode}
 author=yervant7
-description=Improve Hide in APatch
+description=DLCLOSE_MODULE_LIBRARY and FORCE_DENYLIST_UNMOUNT for non-root processes.
