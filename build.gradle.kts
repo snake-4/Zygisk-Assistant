@@ -16,8 +16,8 @@ fun String.execute(currentWorkingDir: File = file("./")): String {
 
 val moduleId by extra("qingyue")
 val moduleName by extra("Zygisk Qingyue")
-val verName by extra("v0.1.2")
-val verCode by extra(114)
+val verName by extra("v1.0.0")
+val verCode by extra(100)
 val abiList by extra(listOf("arm64-v8a"))
 
 val androidMinSdkVersion by extra(29)
