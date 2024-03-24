@@ -11,7 +11,7 @@ val verName: String by rootProject.extra
 val abiList: List<String> by rootProject.extra
 
 android {
-    namespace = "io.github.yervant7"
+    namespace = "com.example.library"
     compileSdk = 34
     defaultConfig {
         ndk {

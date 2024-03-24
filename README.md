@@ -1,5 +1,5 @@
-## ZygiskNext Assistant
-This module makes ZygiskNext more stealthy but it might create problems with some Zygisk modules.
+## Zygisk Assistant
+This module makes Zygisk more stealthy.
 
 The module sets **DLCLOSE_MODULE_LIBRARY** and **FORCE_DENYLIST_UNMOUNT** Zygisk flags for all non-root application processes.
 
