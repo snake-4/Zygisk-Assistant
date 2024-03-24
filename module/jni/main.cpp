@@ -23,7 +23,7 @@ using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
 
-class Qingyue : public zygisk::ModuleBase {
+class ZygiskModule : public zygisk::ModuleBase {
 public:
     void onLoad(Api *api, JNIEnv *env) override {
         this->api = api;
@@ -54,4 +54,4 @@ private:
 
 };
 
-REGISTER_ZYGISK_MODULE(Qingyue)
+REGISTER_ZYGISK_MODULE(ZygiskModule)

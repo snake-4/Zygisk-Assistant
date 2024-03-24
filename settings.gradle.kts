@@ -14,7 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "qingyue"
 include(
     ":module"
 )
