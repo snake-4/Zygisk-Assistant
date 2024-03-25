@@ -1,13 +1,14 @@
-#include <cstdlib>
 #include <unistd.h>
-#include <fcntl.h>
-#include <android/log.h>
+#include <sched.h>
 
 #include "zygisk.hpp"
+#include "logging.hpp"
 
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
+
+void do_unmount();
 
 class ZygiskModule : public zygisk::ModuleBase
 {
@@ -25,22 +26,30 @@ public:
         uint32_t flags = api->getFlags();
         bool isRoot = (flags & zygisk::StateFlag::PROCESS_GRANTED_ROOT) != 0;
         bool isOnDenylist = (flags & zygisk::StateFlag::PROCESS_ON_DENYLIST) != 0;
-
         if (!isRoot && isOnDenylist && args->uid > 1000)
         {
-            api->setOption(zygisk::Option::FORCE_DENYLIST_UNMOUNT);
-        }
-    }
+            LOGD("Unmounting in preAppSpecialize for pid=%d uid=%d", getpid(), args->uid);
 
-    void preServerSpecialize(ServerSpecializeArgs *args)
-    {
-        api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
+            /*
+             * preAppSpecialize is before ensureInAppMountNamespace.
+             * postAppSpecialize is after seccomp setup.
+             * So we unshare here to create a pseudo app mount namespace
+             */
+            if (unshare(CLONE_NEWNS) == 0)
+            {
+                LOGD("unshare(CLONE_NEWNS) returned 0");
+                do_unmount();
+            }
+            else
+            {
+                LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
+            }
+        }
     }
 
 private:
     Api *api;
     JNIEnv *env;
-
 };
 
 REGISTER_ZYGISK_MODULE(ZygiskModule)
