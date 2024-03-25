@@ -12,8 +12,9 @@ val abiList: List<String> by rootProject.extra
 
 android {
     namespace = "com.example.library"
-    compileSdk = 34
+    compileSdkVersion = "android-31"
     defaultConfig {
+        minSdk = 21
         ndk {
             abiFilters.addAll(abiList)
         }
