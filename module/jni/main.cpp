@@ -56,13 +56,26 @@ public:
         {
             LOGD("Creating new mount namespace for parent pid=%d uid=%d", getpid(), args->uid);
 
-        /*
-         * Mount the pseudo app mount namespace's root as MS_SLAVE, so every mount/umount from
-         * Zygote shared pre-specialization mountspace is propagated to this one.
-         */
-        if (mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) == -1)
-        {
-            LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1");
+            /*
+             * preAppSpecialize is before ensureInAppMountNamespace.
+             * postAppSpecialize is after seccomp setup.
+             * So we unshare here to create a pseudo app mount namespace
+             */
+            if (unshare(CLONE_NEWNS) == -1)
+            {
+                LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
+                // Don't unmount anything in global namespace
+                return;
+            }
+
+            /*
+             * Mount the pseudo app mount namespace's root as MS_SLAVE, so every mount/umount from
+             * Zygote shared pre-specialization mountspace is propagated to this one.
+             */
+            if (mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) == -1)
+            {
+                LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1");
+            }
         }
 
         do_unmount();
