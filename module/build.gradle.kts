@@ -7,6 +7,7 @@ plugins {
 val moduleId: String by rootProject.extra
 val moduleName: String by rootProject.extra
 val verCode: Int by rootProject.extra
+val commitHash: String by rootProject.extra
 val verName: String by rootProject.extra
 val abiList: List<String> by rootProject.extra
 
@@ -39,7 +40,7 @@ androidComponents.onVariants { variant ->
     val libOutDir = layout.buildDirectory.dir("intermediates/stripped_native_libs/$variantLowered/out/lib").get()
     val moduleDir = layout.buildDirectory.dir("outputs/module/$variantLowered").get()
     val zipOutDir = layout.buildDirectory.dir("outputs/release").get()
-    val zipFileName = "$moduleName-$verName-$verCode-$buildTypeLowered.zip".replace(' ', '-')
+    val zipFileName = "$moduleName-$verName-$commitHash-$buildTypeLowered.zip".replace(' ', '-')
 
     val prepareModuleFilesTask = task<Sync>("prepareModuleFiles$variantCapped") {
         group = "module"
@@ -50,7 +51,7 @@ androidComponents.onVariants { variant ->
             expand(
                 "moduleId" to moduleId,
                 "moduleName" to moduleName,
-                "versionName" to "$verName ($verCode-$variantLowered)",
+                "versionName" to "$verName ($commitHash-$variantLowered)",
                 "versionCode" to verCode
             )
         }
