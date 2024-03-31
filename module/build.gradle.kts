@@ -55,6 +55,9 @@ androidComponents.onVariants { variant ->
                 "versionCode" to verCode
             )
         }
+        from("$projectDir/template") {
+            exclude("module.prop")
+        }
         from(libOutDir) {
             into("zygisk")
         }
