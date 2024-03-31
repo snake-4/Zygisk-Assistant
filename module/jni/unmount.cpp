@@ -41,6 +41,13 @@ static bool shouldUnmount(const mount_entry_t &info)
         if (workdir != options.end() && workdir->second.rfind("/data/adb", 0) == 0)
             return true;
     }
+
+    // Unmount the bind mount of default Systemless Hosts module of Magisk
+    // It should've been an overlay instead but we'll make an exception for this one
+    // TODO: Maybe we can unmount all binds from userdata to system?
+    if (mountPoint == "/system/etc/hosts")
+        return true;
+
     return false;
 }
 
