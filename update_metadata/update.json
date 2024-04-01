@@ -1,6 +1,6 @@
 {
-    "version": "v2.0.1",
-    "versionCode": 201,
-    "zipUrl": "https://github.com/snake-4/Zygisk-Assistant/releases/download/v2.0.1/Zygisk-Assistant-v2.0.1-0ee57d5-release.zip",
+    "version": "v2.0.2",
+    "versionCode": 202,
+    "zipUrl": "https://github.com/snake-4/Zygisk-Assistant/releases/download/v2.0.2/Zygisk-Assistant-v2.0.2-aa9a8a0-release.zip",
     "changelog": "https://raw.githubusercontent.com/snake-4/Zygisk-Assistant/main/update_metadata/CHANGELOG.md"
 }
