@@ -7,21 +7,33 @@
 #include "zygisk.hpp"
 #include "logging.hpp"
 #include "mount_parser.hpp"
+#include "mountinfo_parser.hpp"
 
 constexpr std::array<const char *, 4> fsname_list = {"KSU", "APatch", "magisk", "worker"};
 
-static bool shouldUnmount(const mount_entry_t &info)
+static bool shouldUnmount(const mountinfo_entry_t &mount_info)
 {
-    const auto &mountPoint = info.getMountPoint();
-    const auto &type = info.getType();
-    const auto &options = info.getOptions();
+    const auto &root = mount_info.getRoot();
+
+    // Unmount all module bind mounts
+    if (root.rfind("/adb/modules", 0) == 0)
+        return true;
+
+    return false;
+}
+
+static bool shouldUnmount(const mount_entry_t &mount)
+{
+    const auto &mountPoint = mount.getMountPoint();
+    const auto &type = mount.getType();
+    const auto &options = mount.getOptions();
 
     // Unmount everything mounted to /data/adb
     if (mountPoint.rfind("/data/adb", 0) == 0)
         return true;
 
     // Unmount all module overlayfs and tmpfs
-    bool doesFsnameMatch = std::find(fsname_list.begin(), fsname_list.end(), info.getFsName()) != fsname_list.end();
+    bool doesFsnameMatch = std::find(fsname_list.begin(), fsname_list.end(), mount.getFsName()) != fsname_list.end();
     if ((type == "overlay" || type == "tmpfs") && doesFsnameMatch)
         return true;
 
@@ -42,23 +54,28 @@ static bool shouldUnmount(const mount_entry_t &info)
             return true;
     }
 
-    // Unmount the bind mount of default Systemless Hosts module of Magisk
-    // It should've been an overlay instead but we'll make an exception for this one
-    // TODO: Maybe we can unmount all binds from userdata to system?
-    if (mountPoint == "/system/etc/hosts")
-        return true;
-
     return false;
 }
 
 void do_unmount()
 {
     std::vector<std::string> mountPoints;
-    for (auto &info : parseMountsFromPath("/proc/self/mounts"))
+
+    // Check mounts first
+    for (auto &mount : parseMountsFromPath("/proc/self/mounts"))
     {
-        if (shouldUnmount(info))
+        if (shouldUnmount(mount))
         {
-            mountPoints.push_back(info.getMountPoint());
+            mountPoints.push_back(mount.getMountPoint());
+        }
+    }
+
+    // Check mountinfos so that we can find bind mounts as well
+    for (auto &mount_info : parseMountinfosFromPath("/proc/self/mountinfo"))
+    {
+        if (shouldUnmount(mount_info))
+        {
+            mountPoints.push_back(mount_info.getMountPoint());
         }
     }
 

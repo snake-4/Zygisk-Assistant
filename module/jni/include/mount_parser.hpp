@@ -16,14 +16,10 @@ public:
     int getPassNumber() const;
 
 private:
-    void parseMountOptions(const std::string &input);
-
-    std::string fsname;
-    std::string dir;
-    std::string type;
+    std::string fsname, dir, type;
     std::unordered_map<std::string, std::string> opts_map;
-    int freq;
-    int passno;
+    int freq, passno;
 };
 
 std::vector<mount_entry_t> parseMountsFromPath(const char *path);
+std::unordered_map<std::string, std::string> parseMountOptions(const std::string &input);
