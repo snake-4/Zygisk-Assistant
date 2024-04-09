@@ -1,11 +1,10 @@
 #include <unistd.h>
 #include <sched.h>
-
 #include <sys/mount.h>
 
 #include "zygisk.hpp"
 #include "logging.hpp"
-#include "android_filesystem_config.h"
+#include "utils.hpp"
 
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
@@ -13,14 +12,16 @@ using zygisk::ServerSpecializeArgs;
 
 void do_unmount();
 
-static int shouldSkipUid(int uid)
+DCL_HOOK_FUNC(static int, unshare, int flags)
 {
-    int appid = uid % AID_USER_OFFSET;
-    if (appid >= AID_APP_START && appid <= AID_APP_END)
-        return false;
-    if (appid >= AID_ISOLATED_START && appid <= AID_ISOLATED_END)
-        return false;
-    return true;
+    // Do not allow CLONE_NEWNS.
+    flags &= ~(CLONE_NEWNS);
+    if (!flags)
+    {
+        // If CLONE_NEWNS was the only flag, skip the call.
+        return 0;
+    }
+    return old_unshare(flags);
 }
 
 class ZygiskModule : public zygisk::ModuleBase
@@ -39,43 +40,45 @@ public:
         uint32_t flags = api->getFlags();
         bool isRoot = (flags & zygisk::StateFlag::PROCESS_GRANTED_ROOT) != 0;
         bool isOnDenylist = (flags & zygisk::StateFlag::PROCESS_ON_DENYLIST) != 0;
-        if (isRoot || !isOnDenylist || shouldSkipUid(args->uid))
+        if (isRoot || !isOnDenylist || !is_userapp_uid(args->uid))
         {
-            LOGD("Skipping pid=%d uid=%d", getpid(), args->uid);
+            LOGD("Skipping pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
             return;
         }
 
-        LOGD("Unmounting in preAppSpecialize for pid=%d uid=%d", getpid(), args->uid);
+        LOGD("Processing pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
 
         /*
-         * Create only one namespace per zygote, child Zygotes will inherit it
-         * But then again, why won't they also inherit the unmounts of the parent?
-         * Either way, unshare in child Zygote will crash at the open FD sanity check.
+         * Calling unshare twice invalidates FD hard links, which fails Zygote sanity checks.
+         * So we hook unshare to prevent further namespace creations.
+         * The logic behind whether there's going to be an unshare or not changes with each major Android version.
+         * For maximum compatibility, we will always unshare but prevent further unshare by this Zygote fork in appSpecialize.
          */
-        if (!*args->is_child_zygote)
+        if (!plt_hook_wrapper("libandroid_runtime.so", "unshare", new_unshare, old_unshare))
         {
-            LOGD("Creating new mount namespace for parent pid=%d uid=%d", getpid(), args->uid);
+            LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", new_unshare, old_unshare) returned false");
+            return;
+        }
 
-            /*
-             * preAppSpecialize is before ensureInAppMountNamespace.
-             * postAppSpecialize is after seccomp setup.
-             * So we unshare here to create a pseudo app mount namespace
-             */
-            if (unshare(CLONE_NEWNS) == -1)
-            {
-                LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
-                // Don't unmount anything in global namespace
-                return;
-            }
+        /*
+         * preAppSpecialize is before any possible unshare calls.
+         * postAppSpecialize is after seccomp setup.
+         * So we unshare here to create an app mount namespace.
+         */
+        if (unshare(CLONE_NEWNS) == -1)
+        {
+            LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
+            return;
+        }
 
-            /*
-             * Mount the pseudo app mount namespace's root as MS_SLAVE, so every mount/umount from
-             * Zygote shared pre-specialization mountspace is propagated to this one.
-             */
-            if (mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) == -1)
-            {
-                LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1");
-            }
+        /*
+         * Mount the app mount namespace's root as MS_SLAVE, so every mount/umount from
+         * Zygote shared pre-specialization namespace is propagated to this one.
+         */
+        if (mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) == -1)
+        {
+            LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1");
+            return;
         }
 
         do_unmount();
@@ -84,6 +87,12 @@ public:
     void preServerSpecialize(ServerSpecializeArgs *args) override
     {
         api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
+    }
+
+    template <typename Return, typename... Args>
+    bool plt_hook_wrapper(const std::string &libName, const std::string &symbolName, Return (&hookFunction)(Args...), Return (*&originalFunction)(Args...))
+    {
+        return hook_plt_by_name(api, libName, symbolName, (void *)&hookFunction, (void **)&originalFunction) && api->pltHookCommit();
     }
 
 private:

@@ -22,10 +22,10 @@ mountinfo_entry_t::mountinfo_entry_t(int mount_id, int parent_id, int major, int
     this->super_options = parseMountOptions(super_options);
 }
 
-const int &mountinfo_entry_t::getMountId() const { return mount_id; }
-const int &mountinfo_entry_t::getParentId() const { return parent_id; }
-const int &mountinfo_entry_t::getMajor() const { return major; }
-const int &mountinfo_entry_t::getMinor() const { return minor; }
+int mountinfo_entry_t::getMountId() const { return mount_id; }
+int mountinfo_entry_t::getParentId() const { return parent_id; }
+int mountinfo_entry_t::getMajor() const { return major; }
+int mountinfo_entry_t::getMinor() const { return minor; }
 const std::string &mountinfo_entry_t::getRoot() const { return root; }
 const std::string &mountinfo_entry_t::getMountPoint() const { return mount_point; }
 const std::unordered_map<std::string, std::string> &mountinfo_entry_t::getMountOptions() const { return mount_options; }

@@ -12,10 +12,10 @@ public:
                       const std::string &filesystem_type, const std::string &mount_source,
                       const std::string &super_options);
 
-    const int &getMountId() const;
-    const int &getParentId() const;
-    const int &getMajor() const;
-    const int &getMinor() const;
+    int getMountId() const;
+    int getParentId() const;
+    int getMajor() const;
+    int getMinor() const;
     const std::string &getRoot() const;
     const std::string &getMountPoint() const;
     const std::unordered_map<std::string, std::string> &getMountOptions() const;
