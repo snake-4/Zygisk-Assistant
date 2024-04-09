@@ -65,7 +65,7 @@ public:
          * postAppSpecialize is after seccomp setup.
          * So we unshare here to create an app mount namespace.
          */
-        if (unshare(CLONE_NEWNS) == -1)
+        if (old_unshare(CLONE_NEWNS) == -1)
         {
             LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
             return;
