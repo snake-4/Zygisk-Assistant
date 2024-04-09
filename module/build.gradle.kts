@@ -37,7 +37,7 @@ androidComponents.onVariants { variant ->
     val variantCapped = variant.name.capitalizeUS()
     val buildTypeLowered = variant.buildType?.lowercase()
 
-    val libOutDir = layout.buildDirectory.dir("intermediates/stripped_native_libs/$variantLowered/strip${variantLowered}DebugSymbols/out/lib").get()
+    val libOutDir = layout.buildDirectory.dir("intermediates/stripped_native_libs/$variantLowered/strip${variantCapped}DebugSymbols/out/lib").get()
     val moduleDir = layout.buildDirectory.dir("outputs/module/$variantLowered").get()
     val zipOutDir = layout.buildDirectory.dir("outputs/release").get()
     val zipFileName = "$moduleName-$verName-$commitHash-$buildTypeLowered.zip".replace(' ', '-')
