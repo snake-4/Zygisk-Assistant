@@ -4,14 +4,14 @@ plugins {
     alias(libs.plugins.agp.lib) apply false
 }
 
-val commitHash: String by extra({
+val commitHash: String by extra {
     val stdout = ByteArrayOutputStream()
     rootProject.exec {
         commandLine("git", "rev-parse", "--short", "HEAD")
         standardOutput = stdout
     }
     stdout.toString().trim()
-})
+}
 
 val moduleId by extra("zygisk-assistant")
 val moduleName by extra("Zygisk Assistant")

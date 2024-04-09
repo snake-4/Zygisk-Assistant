@@ -13,7 +13,7 @@ val abiList: List<String> by rootProject.extra
 
 android {
     namespace = "com.example.library"
-    compileSdkVersion = "android-31"
+    compileSdkVersion = "android-34"
     defaultConfig {
         minSdk = 21
         ndk {
