@@ -3,5 +3,5 @@ name=${moduleName}
 version=${versionName}
 versionCode=${versionCode}
 author=snake-4
-description=Zygisk module to hide mounts.
+description=A Zygisk module to hide root.
 updateJson=https://raw.githubusercontent.com/snake-4/Zygisk-Assistant/main/update_metadata/update.json
