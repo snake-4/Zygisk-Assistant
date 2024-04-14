@@ -35,6 +35,7 @@ public:
 
     void preAppSpecialize(AppSpecializeArgs *args) override
     {
+        isHooked = false;
         api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
 
         uint32_t flags = api->getFlags();
@@ -54,11 +55,12 @@ public:
          * The logic behind whether there's going to be an unshare or not changes with each major Android version.
          * For maximum compatibility, we will always unshare but prevent further unshare by this Zygote fork in appSpecialize.
          */
-        if (!plt_hook_wrapper("libandroid_runtime.so", "unshare", new_unshare, old_unshare))
+        if (!plt_hook_wrapper("libandroid_runtime.so", "unshare", new_unshare, (void **)&old_unshare))
         {
             LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", new_unshare, old_unshare) returned false");
             return;
         }
+        isHooked = true;
 
         /*
          * preAppSpecialize is before any possible unshare calls.
@@ -77,7 +79,7 @@ public:
          */
         if (mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) == -1)
         {
-            LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1");
+            LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1: %d (%s)", errno, strerror(errno));
             return;
         }
 
@@ -89,13 +91,25 @@ public:
         api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
     }
 
-    template <typename Return, typename... Args>
-    bool plt_hook_wrapper(const std::string &libName, const std::string &symbolName, Return (&hookFunction)(Args...), Return (*&originalFunction)(Args...))
+    void postAppSpecialize(const AppSpecializeArgs *args) override
     {
-        return hook_plt_by_name(api, libName, symbolName, (void *)&hookFunction, (void **)&originalFunction) && api->pltHookCommit();
+        if (isHooked)
+        {
+            if (!plt_hook_wrapper("libandroid_runtime.so", "unshare", old_unshare, nullptr))
+            {
+                LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", old_unshare, nullptr) returned false");
+                return;
+            }
+        }
+    }
+
+    bool plt_hook_wrapper(const std::string &libName, const std::string &symbolName, void *hookFunction, void **originalFunction)
+    {
+        return hook_plt_by_name(api, libName, symbolName, hookFunction, originalFunction) && api->pltHookCommit();
     }
 
 private:
+    bool isHooked = false;
     Api *api;
     JNIEnv *env;
 };
