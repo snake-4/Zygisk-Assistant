@@ -16,7 +16,7 @@ static bool shouldUnmount(const mountinfo_entry_t &mount_info)
     const auto &root = mount_info.getRoot();
 
     // Unmount all module bind mounts
-    if (root.rfind("/adb/modules", 0) == 0)
+    if (root.rfind("/adb/", 0) == 0)
         return true;
 
     return false;
@@ -92,6 +92,30 @@ void do_unmount()
         else
         {
             LOGE("umount2(\"%s\", MNT_DETACH) returned -1: %d (%s)", mountPoint.c_str(), errno, strerror(errno));
+        }
+    }
+}
+
+void do_remount()
+{
+    std::vector<mount_entry_t> mounts = parseMountsFromPath("/proc/self/mounts");
+    auto data_mount_it = std::find_if(mounts.begin(), mounts.end(), [](const mount_entry_t &mount)
+                                      { return mount.getMountPoint() == "/data"; });
+    if (data_mount_it != mounts.end())
+    {
+        const auto &options = data_mount_it->getOptions();
+
+        // If errors=remount-ro, remount it with errors=continue
+        if (options.find("errors") != options.end() && options.at("errors") == "remount-ro")
+        {
+            if (mount(NULL, "/data", NULL, MS_REMOUNT, "errors=continue") == 0)
+            {
+                LOGD("mount(NULL, \"/data\", NULL, MS_REMOUNT, \"errors=continue\") returned 0");
+            }
+            else
+            {
+                LOGE("mount(NULL, \"/data\", NULL, MS_REMOUNT, \"errors=continue\") returned -1: %d (%s)", errno, strerror(errno));
+            }
         }
     }
 }

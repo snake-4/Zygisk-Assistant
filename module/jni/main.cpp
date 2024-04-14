@@ -11,6 +11,7 @@ using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
 
 void do_unmount();
+void do_remount();
 
 DCL_HOOK_FUNC(static int, unshare, int flags)
 {
@@ -84,6 +85,7 @@ public:
         }
 
         do_unmount();
+        do_remount();
     }
 
     void preServerSpecialize(ServerSpecializeArgs *args) override
