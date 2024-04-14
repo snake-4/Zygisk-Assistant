@@ -5,7 +5,7 @@
 #include "android_filesystem_config.h"
 #include "zygisk.hpp"
 
-bool hook_plt_by_name(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc)
+bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc)
 {
     for (const auto &map : parseMapsFromPath("/proc/self/maps"))
     {
@@ -18,7 +18,7 @@ bool hook_plt_by_name(zygisk::Api *api, const std::string &libName, const std::s
     return false;
 }
 
-int is_userapp_uid(int uid)
+int isUserAppUID(int uid)
 {
     int appid = uid % AID_USER_OFFSET;
     if (appid >= AID_APP_START && appid <= AID_APP_END)

@@ -10,8 +10,8 @@ using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
 
-void do_unmount();
-void do_remount();
+void doUnmount();
+void doRemount();
 
 DCL_HOOK_FUNC(static int, unshare, int flags)
 {
@@ -42,12 +42,11 @@ public:
         uint32_t flags = api->getFlags();
         bool isRoot = (flags & zygisk::StateFlag::PROCESS_GRANTED_ROOT) != 0;
         bool isOnDenylist = (flags & zygisk::StateFlag::PROCESS_ON_DENYLIST) != 0;
-        if (isRoot || !isOnDenylist || !is_userapp_uid(args->uid))
+        if (isRoot || !isOnDenylist || !isUserAppUID(args->uid))
         {
             LOGD("Skipping pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
             return;
         }
-
         LOGD("Processing pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
 
         /*
@@ -56,7 +55,7 @@ public:
          * The logic behind whether there's going to be an unshare or not changes with each major Android version.
          * For maximum compatibility, we will always unshare but prevent further unshare by this Zygote fork in appSpecialize.
          */
-        if (!plt_hook_wrapper("libandroid_runtime.so", "unshare", new_unshare, (void **)&old_unshare))
+        if (!hookPLTByName("libandroid_runtime.so", "unshare", &new_unshare, &old_unshare))
         {
             LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", new_unshare, old_unshare) returned false");
             return;
@@ -84,8 +83,8 @@ public:
             return;
         }
 
-        do_unmount();
-        do_remount();
+        doUnmount();
+        doRemount();
     }
 
     void preServerSpecialize(ServerSpecializeArgs *args) override
@@ -97,7 +96,7 @@ public:
     {
         if (isHooked)
         {
-            if (!plt_hook_wrapper("libandroid_runtime.so", "unshare", old_unshare, nullptr))
+            if (!hookPLTByName("libandroid_runtime.so", "unshare", old_unshare))
             {
                 LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", old_unshare, nullptr) returned false");
                 return;
@@ -105,9 +104,10 @@ public:
         }
     }
 
-    bool plt_hook_wrapper(const std::string &libName, const std::string &symbolName, void *hookFunction, void **originalFunction)
+    template <typename T>
+    bool hookPLTByName(const std::string &libName, const std::string &symbolName, T *hookFunction, T **originalFunction = nullptr)
     {
-        return hook_plt_by_name(api, libName, symbolName, hookFunction, originalFunction) && api->pltHookCommit();
+        return ::hookPLTByName(api, libName, symbolName, (void *)hookFunction, (void **)originalFunction) && api->pltHookCommit();
     }
 
 private:

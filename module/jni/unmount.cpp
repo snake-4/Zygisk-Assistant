@@ -57,7 +57,7 @@ static bool shouldUnmount(const mount_entry_t &mount)
     return false;
 }
 
-void do_unmount()
+void doUnmount()
 {
     std::vector<std::string> mountPoints;
 
@@ -96,7 +96,7 @@ void do_unmount()
     }
 }
 
-void do_remount()
+void doRemount()
 {
     std::vector<mount_entry_t> mounts = parseMountsFromPath("/proc/self/mounts");
     auto data_mount_it = std::find_if(mounts.begin(), mounts.end(), [](const mount_entry_t &mount)
