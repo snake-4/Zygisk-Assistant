@@ -94,6 +94,7 @@ public:
         ASSERT_EXIT("preAppSpecialize", hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare), return);
         ASSERT_EXIT("preAppSpecialize", hookPLTByName("libandroid_runtime.so", "setresuid", new_setresuid, &old_setresuid), return);
 
+        int companionFd = -1;
         ASSERT_LOG("preAppSpecialize", (companionFd = api->connectCompanion()) != -1);
 
         callbackFunction = [fd = companionFd]()
@@ -144,7 +145,6 @@ public:
     }
 
 private:
-    int companionFd = -1;
     Api *api;
     JNIEnv *env;
 };
@@ -155,10 +155,9 @@ void zygisk_companion_handler(int fd)
     {
         pid_t pid;
         ASSERT_EXIT("zygisk_companion_handler", read(fd, &pid, sizeof(pid)) == sizeof(pid), return false);
-        LOGD("zygisk_companion_handler received pid=%d", pid);
-
         ASSERT_EXIT("zygisk_companion_handler", unshare(CLONE_NEWNS) != -1, return false);
         ASSERT_EXIT("zygisk_companion_handler", switchMountNS(pid), return false);
+        LOGD("zygisk_companion_handler processing namespace of pid=%d", pid);
 
         doUnmount();
         doRemount();
