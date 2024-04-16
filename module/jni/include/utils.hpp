@@ -3,7 +3,7 @@
 #include "zygisk.hpp"
 
 #define DCL_HOOK_FUNC(ret, func, ...) \
-    ret (*old_##func)(__VA_ARGS__);   \
+    ret (*old_##func)(__VA_ARGS__) = nullptr;   \
     ret new_##func(__VA_ARGS__)
 
 int isUserAppUID(int uid);

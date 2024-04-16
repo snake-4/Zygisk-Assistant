@@ -13,13 +13,30 @@ using zygisk::ServerSpecializeArgs;
 void doUnmount();
 void doRemount();
 
+/*
+ * [What's the purpose of this hook?]
+ * Calling unshare twice invalidates existing FD links, which fails Zygote sanity checks.
+ * So we prevent further namespaces by hooking unshare.
+ *
+ * [Doesn't Android already call unshare?]
+ * Whether there's going to be an unshare or not changes with each major Android version
+ * so we unconditionally unshare in preAppSpecialize.
+ * > Android 5: Conditionally unshares
+ * > Android 6: Always unshares
+ * > Android 7-11: Conditionally unshares
+ * > Android 12-14: Always unshares
+ */
 DCL_HOOK_FUNC(static int, unshare, int flags)
 {
+    doUnmount();
+    doRemount();
+
     // Do not allow CLONE_NEWNS.
     flags &= ~(CLONE_NEWNS);
     if (!flags)
     {
         // If CLONE_NEWNS was the only flag, skip the call.
+        errno = 0;
         return 0;
     }
     return old_unshare(flags);
@@ -36,7 +53,6 @@ public:
 
     void preAppSpecialize(AppSpecializeArgs *args) override
     {
-        isHooked = false;
         api->setOption(zygisk::Option::DLCLOSE_MODULE_LIBRARY);
 
         uint32_t flags = api->getFlags();
@@ -50,24 +66,9 @@ public:
         LOGD("Processing pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
 
         /*
-         * Calling unshare twice invalidates FD hard links, which fails Zygote sanity checks.
-         * So we hook unshare to prevent further namespace creations.
-         * The logic behind whether there's going to be an unshare or not changes with each major Android version.
-         * For maximum compatibility, we will always unshare but prevent further unshare by this Zygote fork in appSpecialize.
+         * Read the comment above unshare hook.
          */
-        if (!hookPLTByName("libandroid_runtime.so", "unshare", &new_unshare, &old_unshare))
-        {
-            LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", new_unshare, old_unshare) returned false");
-            return;
-        }
-        isHooked = true;
-
-        /*
-         * preAppSpecialize is before any possible unshare calls.
-         * postAppSpecialize is after seccomp setup.
-         * So we unshare here to create an app mount namespace.
-         */
-        if (old_unshare(CLONE_NEWNS) == -1)
+        if (unshare(CLONE_NEWNS) == -1)
         {
             LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
             return;
@@ -83,8 +84,11 @@ public:
             return;
         }
 
-        doUnmount();
-        doRemount();
+        if (!hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare))
+        {
+            LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", new_unshare, old_unshare) returned false");
+            return;
+        }
     }
 
     void preServerSpecialize(ServerSpecializeArgs *args) override
@@ -94,13 +98,9 @@ public:
 
     void postAppSpecialize(const AppSpecializeArgs *args) override
     {
-        if (isHooked)
+        if (old_unshare != nullptr && !hookPLTByName("libandroid_runtime.so", "unshare", old_unshare))
         {
-            if (!hookPLTByName("libandroid_runtime.so", "unshare", old_unshare))
-            {
-                LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", old_unshare, nullptr) returned false");
-                return;
-            }
+            LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", old_unshare) returned false");
         }
     }
 
@@ -111,7 +111,6 @@ public:
     }
 
 private:
-    bool isHooked = false;
     Api *api;
     JNIEnv *env;
 };
