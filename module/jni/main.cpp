@@ -96,6 +96,7 @@ public:
 
         int companionFd = -1;
         ASSERT_LOG("preAppSpecialize", (companionFd = api->connectCompanion()) != -1);
+        ASSERT_LOG("preAppSpecialize", companionFd != -1 && api->exemptFd(companionFd));
 
         callbackFunction = [fd = companionFd]()
         {
