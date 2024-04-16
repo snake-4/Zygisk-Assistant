@@ -46,6 +46,16 @@ DCL_HOOK_FUNC(static int, unshare, int flags)
     return old_unshare(flags);
 }
 
+/*
+ * The reason why we hook setresuid is because so far it has been unconditionally called
+ * and we still have CAP_SYS_ADMIN during this call.
+ */
+DCL_HOOK_FUNC(static int, setresuid, uid_t ruid, uid_t euid, uid_t suid)
+{
+    callbackFunction();
+    return old_setresuid(ruid, euid, suid);
+}
+
 class ZygiskModule : public zygisk::ModuleBase
 {
 public:
@@ -82,6 +92,7 @@ public:
         ASSERT_EXIT("preAppSpecialize", mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) != -1, return);
 
         ASSERT_EXIT("preAppSpecialize", hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare), return);
+        ASSERT_EXIT("preAppSpecialize", hookPLTByName("libandroid_runtime.so", "setresuid", new_setresuid, &old_setresuid), return);
 
         ASSERT_LOG("preAppSpecialize", (companionFd = api->connectCompanion()) != -1);
 
@@ -107,6 +118,9 @@ public:
                 doUnmount();
                 doRemount();
             }
+
+            // Call only once per process.
+            callbackFunction = []() {};
         };
     }
 
@@ -119,6 +133,8 @@ public:
     {
         if (old_unshare != nullptr)
             ASSERT_LOG("postAppSpecialize", hookPLTByName("libandroid_runtime.so", "unshare", old_unshare));
+        if (old_setresuid != nullptr)
+            ASSERT_LOG("postAppSpecialize", hookPLTByName("libandroid_runtime.so", "setresuid", old_setresuid));
     }
 
     template <typename T>
