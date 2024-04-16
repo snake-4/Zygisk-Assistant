@@ -1,6 +1,10 @@
 #include <unistd.h>
 #include <sched.h>
 #include <sys/mount.h>
+#include <grp.h>
+
+#include <cstdint>
+#include <functional>
 
 #include "zygisk.hpp"
 #include "logging.hpp"
@@ -12,6 +16,8 @@ using zygisk::ServerSpecializeArgs;
 
 void doUnmount();
 void doRemount();
+
+static std::function<void()> callbackFunction = []() {};
 
 /*
  * [What's the purpose of this hook?]
@@ -28,9 +34,7 @@ void doRemount();
  */
 DCL_HOOK_FUNC(static int, unshare, int flags)
 {
-    doUnmount();
-    doRemount();
-
+    callbackFunction();
     // Do not allow CLONE_NEWNS.
     flags &= ~(CLONE_NEWNS);
     if (!flags)
@@ -68,27 +72,41 @@ public:
         /*
          * Read the comment above unshare hook.
          */
-        if (unshare(CLONE_NEWNS) == -1)
-        {
-            LOGE("unshare(CLONE_NEWNS) returned -1: %d (%s)", errno, strerror(errno));
-            return;
-        }
+        ASSERT_EXIT("preAppSpecialize", unshare(CLONE_NEWNS) != -1, return);
 
         /*
          * Mount the app mount namespace's root as MS_SLAVE, so every mount/umount from
          * Zygote shared pre-specialization namespace is propagated to this one.
          */
-        if (mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) == -1)
-        {
-            LOGE("mount(\"rootfs\", \"/\", NULL, (MS_SLAVE | MS_REC), NULL) returned -1: %d (%s)", errno, strerror(errno));
-            return;
-        }
+        ASSERT_EXIT("preAppSpecialize", mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) != -1, return);
 
-        if (!hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare))
+        ASSERT_EXIT("preAppSpecialize", hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare), return);
+
+        ASSERT_LOG("preAppSpecialize", (companionFd = api->connectCompanion()) != -1);
+
+        callbackFunction = [fd = companionFd]()
         {
-            LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", new_unshare, old_unshare) returned false");
-            return;
-        }
+            bool result = false;
+            if (fd != -1)
+            {
+                do
+                {
+                    pid_t pid = getpid();
+                    ASSERT_EXIT("invokeZygiskCompanion", write(fd, &pid, sizeof(pid)) == sizeof(pid), break);
+                    ASSERT_EXIT("invokeZygiskCompanion", read(fd, &result, sizeof(result)) == sizeof(result), break);
+                } while (false);
+                close(fd);
+            }
+
+            if (result)
+                LOGD("Invoking the companion was successful.");
+            else
+            {
+                LOGW("Invoking the companion failed. Performing operations in Zygote context!");
+                doUnmount();
+                doRemount();
+            }
+        };
     }
 
     void preServerSpecialize(ServerSpecializeArgs *args) override
@@ -98,10 +116,8 @@ public:
 
     void postAppSpecialize(const AppSpecializeArgs *args) override
     {
-        if (old_unshare != nullptr && !hookPLTByName("libandroid_runtime.so", "unshare", old_unshare))
-        {
-            LOGE("plt_hook_wrapper(\"libandroid_runtime.so\", \"unshare\", old_unshare) returned false");
-        }
+        if (old_unshare != nullptr)
+            ASSERT_LOG("postAppSpecialize", hookPLTByName("libandroid_runtime.so", "unshare", old_unshare));
     }
 
     template <typename T>
@@ -111,8 +127,30 @@ public:
     }
 
 private:
+    int companionFd = -1;
     Api *api;
     JNIEnv *env;
 };
 
+void zygisk_companion_handler(int fd)
+{
+    bool result = [&]() -> bool
+    {
+        pid_t pid;
+        ASSERT_EXIT("zygisk_companion_handler", read(fd, &pid, sizeof(pid)) == sizeof(pid), return false);
+        LOGD("zygisk_companion_handler received pid=%d", pid);
+
+        ASSERT_EXIT("zygisk_companion_handler", unshare(CLONE_NEWNS) != -1, return false);
+        ASSERT_EXIT("zygisk_companion_handler", switchMountNS(pid), return false);
+
+        doUnmount();
+        doRemount();
+
+        return true;
+    }();
+
+    ASSERT_LOG("zygisk_companion_handler", write(fd, &result, sizeof(result)) == sizeof(result));
+}
+
 REGISTER_ZYGISK_MODULE(ZygiskModule)
+REGISTER_ZYGISK_COMPANION(zygisk_companion_handler)

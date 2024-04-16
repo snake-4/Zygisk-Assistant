@@ -7,6 +7,7 @@
 
 #include "mount_parser.hpp"
 #include "logging.hpp"
+#include "utils.hpp"
 
 mount_entry_t::mount_entry_t(::mntent *entry)
     : fsname(entry->mnt_fsname), dir(entry->mnt_dir), type(entry->mnt_type), freq(entry->mnt_freq), passno(entry->mnt_passno)
@@ -25,12 +26,8 @@ std::vector<mount_entry_t> parseMountsFromPath(const char *path)
 {
     std::vector<mount_entry_t> result;
 
-    FILE *file = setmntent(path, "r");
-    if (file == NULL)
-    {
-        LOGE("setmntent(\"%s\", \"r\") returned NULL: %d (%s)", path, errno, strerror(errno));
-        return result;
-    }
+    FILE *file;
+    ASSERT_EXIT("parseMountsFromPath", (file = setmntent(path, "r")) != NULL, return result);
 
     struct mntent *entry;
     while ((entry = getmntent(file)) != NULL)

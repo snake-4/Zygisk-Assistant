@@ -8,6 +8,7 @@
 #include "logging.hpp"
 #include "mount_parser.hpp"
 #include "mountinfo_parser.hpp"
+#include "utils.hpp"
 
 constexpr std::array<const char *, 4> fsname_list = {"KSU", "APatch", "magisk", "worker"};
 
@@ -91,7 +92,7 @@ void doUnmount()
         }
         else
         {
-            LOGE("umount2(\"%s\", MNT_DETACH) returned -1: %d (%s)", mountPoint.c_str(), errno, strerror(errno));
+            LOGW("umount2(\"%s\", MNT_DETACH) returned -1: %d (%s)", mountPoint.c_str(), errno, strerror(errno));
         }
     }
 }
@@ -108,14 +109,8 @@ void doRemount()
         // If errors=remount-ro, remount it with errors=continue
         if (options.find("errors") != options.end() && options.at("errors") == "remount-ro")
         {
-            if (mount(NULL, "/data", NULL, MS_REMOUNT, "errors=continue") == 0)
-            {
-                LOGD("mount(NULL, \"/data\", NULL, MS_REMOUNT, \"errors=continue\") returned 0");
-            }
-            else
-            {
-                LOGE("mount(NULL, \"/data\", NULL, MS_REMOUNT, \"errors=continue\") returned -1: %d (%s)", errno, strerror(errno));
-            }
+            LOGD("Trying to remount: /data");
+            ASSERT_LOG("doRemount", mount(NULL, "/data", NULL, MS_REMOUNT, "errors=continue") == 0);
         }
     }
 }
