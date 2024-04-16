@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
-#include <array>
+#include <set>
+#include <unordered_map>
 
 #include <sys/mount.h>
 
@@ -10,17 +11,22 @@
 #include "mountinfo_parser.hpp"
 #include "utils.hpp"
 
-constexpr std::array<const char *, 4> fsname_list = {"KSU", "APatch", "magisk", "worker"};
+static const std::set<std::string> fsname_list = {"KSU", "APatch", "magisk", "worker"};
+static const std::unordered_map<std::string, int> mount_flags_procfs = {
+    {"nosuid", MS_NOSUID},
+    {"nodev", MS_NODEV},
+    {"noexec", MS_NOEXEC},
+    {"noatime", MS_NOATIME},
+    {"nodiratime", MS_NODIRATIME},
+    {"relatime", MS_RELATIME},
+    {"nosymfollow", MS_NOSYMFOLLOW}};
 
 static bool shouldUnmount(const mountinfo_entry_t &mount_info)
 {
     const auto &root = mount_info.getRoot();
 
     // Unmount all module bind mounts
-    if (root.rfind("/adb/", 0) == 0)
-        return true;
-
-    return false;
+    return root.starts_with("/adb/");
 }
 
 static bool shouldUnmount(const mount_entry_t &mount)
@@ -34,24 +40,19 @@ static bool shouldUnmount(const mount_entry_t &mount)
         return true;
 
     // Unmount all module overlayfs and tmpfs
-    bool doesFsnameMatch = std::find(fsname_list.begin(), fsname_list.end(), mount.getFsName()) != fsname_list.end();
-    if ((type == "overlay" || type == "tmpfs") && doesFsnameMatch)
+    if ((type == "overlay" || type == "tmpfs") && fsname_list.contains(mount.getFsName()))
         return true;
 
     // Unmount all overlayfs with lowerdir/upperdir/workdir starting with /data/adb
     if (type == "overlay")
     {
-        const auto &lowerdir = options.find("lowerdir");
-        const auto &upperdir = options.find("upperdir");
-        const auto &workdir = options.find("workdir");
-
-        if (lowerdir != options.end() && lowerdir->second.rfind("/data/adb", 0) == 0)
+        if (options.contains("lowerdir") && options.at("lowerdir").starts_with("/data/adb"))
             return true;
 
-        if (upperdir != options.end() && upperdir->second.rfind("/data/adb", 0) == 0)
+        if (options.contains("upperdir") && options.at("upperdir").starts_with("/data/adb"))
             return true;
 
-        if (workdir != options.end() && workdir->second.rfind("/data/adb", 0) == 0)
+        if (options.contains("workdir") && options.at("workdir").starts_with("/data/adb"))
             return true;
     }
 
@@ -107,10 +108,23 @@ void doRemount()
         const auto &options = data_mount_it->getOptions();
 
         // If errors=remount-ro, remount it with errors=continue
-        if (options.find("errors") != options.end() && options.at("errors") == "remount-ro")
+        if (options.contains("errors") && options.at("errors") == "remount-ro")
         {
-            LOGD("Trying to remount: /data");
-            ASSERT_LOG("doRemount", mount(NULL, "/data", NULL, MS_REMOUNT, "errors=continue") == 0);
+            unsigned long flags = MS_REMOUNT;
+            for (const auto &flagName : mount_flags_procfs)
+            {
+                if (options.contains(flagName.first))
+                    flags |= flagName.second;
+            }
+
+            if (mount(NULL, "/data", NULL, flags, "errors=continue") == 0)
+            {
+                LOGD("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned 0", flags);
+            }
+            else
+            {
+                LOGW("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned -1: %d (%s)", flags, errno, strerror(errno));
+            }
         }
     }
 }

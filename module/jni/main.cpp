@@ -62,12 +62,13 @@ public:
         uint32_t flags = api->getFlags();
         bool isRoot = (flags & zygisk::StateFlag::PROCESS_GRANTED_ROOT) != 0;
         bool isOnDenylist = (flags & zygisk::StateFlag::PROCESS_ON_DENYLIST) != 0;
+        bool isChildZygote = args->is_child_zygote != NULL && *args->is_child_zygote;
         if (isRoot || !isOnDenylist || !isUserAppUID(args->uid))
         {
-            LOGD("Skipping pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
+            LOGD("Skipping ppid=%d uid=%d isChildZygote=%d", getppid(), args->uid, isChildZygote);
             return;
         }
-        LOGD("Processing pid=%d ppid=%d uid=%d", getpid(), getppid(), args->uid);
+        LOGD("Processing ppid=%d uid=%d isChildZygote=%d", getppid(), args->uid, isChildZygote);
 
         /*
          * Read the comment above unshare hook.
