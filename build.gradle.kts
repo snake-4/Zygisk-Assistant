@@ -1,7 +1,7 @@
 import java.io.ByteArrayOutputStream
 
 plugins {
-    alias(libs.plugins.agp.lib) apply false
+    id("com.android.library") version "8.3.2" apply false
 }
 
 val commitHash: String by extra {
@@ -17,4 +17,3 @@ val moduleId by extra("zygisk-assistant")
 val moduleName by extra("Zygisk Assistant")
 val verName by extra("v2.0.4")
 val verCode by extra(204)
-val abiList by extra(listOf("armeabi-v7a","arm64-v8a","x86","x86_64"))

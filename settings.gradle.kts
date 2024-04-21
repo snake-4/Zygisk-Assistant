@@ -14,6 +14,4 @@ dependencyResolutionManagement {
     }
 }
 
-include(
-    ":module"
-)
+include(":module")

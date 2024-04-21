@@ -1,7 +1,7 @@
 import android.databinding.tool.ext.capitalizeUS
 
 plugins {
-    alias(libs.plugins.agp.lib)
+    id("com.android.library")
 }
 
 val moduleId: String by rootProject.extra
@@ -13,12 +13,9 @@ val abiList: List<String> by rootProject.extra
 
 android {
     namespace = "com.example.library"
-    compileSdkVersion = "android-34"
+    compileSdkVersion = "android-31"
     defaultConfig {
         minSdk = 21
-        ndk {
-            abiFilters.addAll(abiList)
-        }
         externalNativeBuild {
             ndkBuild {
                 arguments("-j${Runtime.getRuntime().availableProcessors()}")
