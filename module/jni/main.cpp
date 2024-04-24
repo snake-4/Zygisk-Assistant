@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <sched.h>
 #include <sys/mount.h>
-#include <grp.h>
 
 #include <cstdint>
 #include <functional>
@@ -9,13 +8,11 @@
 #include "zygisk.hpp"
 #include "logging.hpp"
 #include "utils.hpp"
+#include "modules.hpp"
 
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
-
-void doUnmount();
-void doRemount();
 
 static std::function<void()> callbackFunction = []() {};
 
@@ -120,6 +117,8 @@ public:
                 doUnmount();
                 doRemount();
             }
+
+            doHideZygisk();
 
             // Call only once per process.
             callbackFunction = []() {};

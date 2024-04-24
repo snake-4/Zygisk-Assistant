@@ -2,11 +2,13 @@
 #include <vector>
 #include <set>
 #include <unordered_map>
-
+#include <cstdint>
 #include <sys/mount.h>
+#include <elfio/elfio.hpp>
 
 #include "zygisk.hpp"
 #include "logging.hpp"
+#include "map_parser.hpp"
 #include "mount_parser.hpp"
 #include "mountinfo_parser.hpp"
 #include "utils.hpp"
@@ -127,4 +129,50 @@ void doRemount()
             }
         }
     }
+}
+
+/*
+ * Is it guaranteed to work? No.
+ * At least it has lots of error checking so if something goes wrong
+ * the state should remain relatively safe.
+ */
+void doHideZygisk()
+{
+    using namespace ELFIO;
+
+    elfio reader;
+    std::string filePath;
+    uintptr_t startAddress = 0, bssAddress = 0;
+
+    for (const auto &map : parseMapsFromPath("/proc/self/maps"))
+    {
+        if (map.getPathname().ends_with("/libnativebridge.so") && map.getPerms() == "r--p")
+        {
+            // First ro page should be the ELF header
+            filePath = map.getPathname();
+            startAddress = map.getAddressStart();
+            break;
+        }
+    }
+
+    ASSERT_EXIT("doHideZygisk", startAddress != 0, return);
+    ASSERT_EXIT("doHideZygisk", reader.load(filePath), return);
+
+    size_t bssSize = 0;
+    for (const auto &sec : reader.sections)
+    {
+        if (sec->get_name() == ".bss")
+        {
+            bssAddress = startAddress + sec->get_address();
+            bssSize = static_cast<size_t>(sec->get_size());
+            break;
+        }
+    }
+
+    ASSERT_EXIT("doHideZygisk", bssAddress != 0, return);
+    LOGD("Found .bss for \"%s\" at 0x%" PRIxPTR " sized %" PRIuPTR " bytes.", filePath.c_str(), bssAddress, bssSize);
+
+    uint8_t *pHadError = reinterpret_cast<uint8_t *>(memchr(reinterpret_cast<void *>(bssAddress), 0x01, bssSize));
+    ASSERT_EXIT("doHideZygisk", pHadError != nullptr, return);
+    *pHadError = 0;
 }

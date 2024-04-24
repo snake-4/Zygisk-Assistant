@@ -1,7 +1,8 @@
 #pragma once
 #include <android/log.h>
-#include <string.h>
-#include <errno.h>
+#include <cstring>
+#include <cerrno>
+#include <cinttypes>
 
 #ifndef NDEBUG
 static constexpr auto TAG = "ZygiskAssistant/JNI";
