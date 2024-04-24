@@ -1,6 +1,6 @@
-[submodule "libcxx"]
-	path = module/jni/libcxx
-	url = https://github.com/topjohnwu/libcxx.git
 [submodule "module/jni/elfio"]
 	path = module/jni/elfio
 	url = https://github.com/serge1/ELFIO.git
+[submodule "module/jni/libcxx"]
+	path = module/jni/libcxx
+	url = https://github.com/topjohnwu/libcxx.git
