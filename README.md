@@ -1,7 +1,7 @@
 <h3 align="center">Zygisk Assistant</h3>
 
   <p align="center">
-    A Zygisk module that hides root by unmounting suspicious mounts in user-mode.
+    A Zygisk module that aims to hide the existence root and Zygisk.
     <br />
     <br />
     <a href="https://github.com/snake-4/Zygisk-Assistant/issues">Report Bug</a>
@@ -16,7 +16,18 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This module creates a new transparent namespace for each application in preAppSpecialize and unmounts common root mounts.
+Using the **release** build is recommended over the debug build. Only use debug builds if you are going to make a bug report.
+
+### KernelSU & APatch users:
+1. Install ZygiskNext.
+1. Make sure the unmount setting is enabled for the target app in the KernelSU/APatch Manager.
+1. Disable `Enforce DenyList` in ZygiskNext settings if there is one.
+
+### Magisk users:
+1. Update your Magisk to 27.0 or newer for better hiding capabilities. (optional)
+1. Turn on Zygisk in Magisk settings.
+1. Turn off `Enforce DenyList` in Magisk settings.
+1. Add the target app to the deny list unless you're using a Magisk fork with a white list instead.
 
 
 <!-- CONTRIBUTING -->
