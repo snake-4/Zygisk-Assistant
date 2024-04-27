@@ -9,6 +9,8 @@
 #include "logging.hpp"
 #include "utils.hpp"
 
+using namespace Parsers;
+
 mount_entry_t::mount_entry_t(::mntent *entry)
     : fsname(entry->mnt_fsname), dir(entry->mnt_dir), type(entry->mnt_type), freq(entry->mnt_freq), passno(entry->mnt_passno)
 {
@@ -22,7 +24,7 @@ const std::unordered_map<std::string, std::string> &mount_entry_t::getOptions() 
 int mount_entry_t::getDumpFrequency() const { return freq; }
 int mount_entry_t::getPassNumber() const { return passno; }
 
-const std::vector<mount_entry_t> &parseSelfMounts(bool cached)
+const std::vector<mount_entry_t> &Parsers::parseSelfMounts(bool cached)
 {
     static std::vector<mount_entry_t> parser_cache;
     if (cached && !parser_cache.empty())
@@ -32,7 +34,7 @@ const std::vector<mount_entry_t> &parseSelfMounts(bool cached)
     parser_cache.clear();
 
     FILE *file;
-    ASSERT_EXIT("parseSelfMounts", (file = setmntent("/proc/self/mounts", "r")) != NULL, return parser_cache);
+    ASSERT_DO(parseSelfMounts, (file = setmntent("/proc/self/mounts", "r")) != NULL, return parser_cache);
 
     struct mntent *entry;
     while ((entry = getmntent(file)) != NULL)
@@ -44,7 +46,7 @@ const std::vector<mount_entry_t> &parseSelfMounts(bool cached)
     return parser_cache;
 }
 
-std::unordered_map<std::string, std::string> parseMountOptions(const std::string &input)
+std::unordered_map<std::string, std::string> Parsers::parseMountOptions(const std::string &input)
 {
     std::unordered_map<std::string, std::string> ret;
     std::istringstream iss(input);

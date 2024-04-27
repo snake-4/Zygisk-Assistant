@@ -1,6 +1,8 @@
 #include <string>
+#include <functional>
 #include <format>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <sched.h>
 #include <fcntl.h>
 
@@ -10,9 +12,11 @@
 #include "zygisk.hpp"
 #include "logging.hpp"
 
-bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc)
+using namespace Utils;
+
+bool Utils::hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc)
 {
-    for (const auto &map : parseSelfMaps())
+    for (const auto &map : Parsers::parseSelfMaps())
     {
         if (map.getPathname().ends_with("/" + libName))
         {
@@ -23,7 +27,7 @@ bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::stri
     return false;
 }
 
-int isUserAppUID(int uid)
+int Utils::isUserAppUID(int uid)
 {
     int appid = uid % AID_USER_OFFSET;
     if (appid >= AID_APP_START && appid <= AID_APP_END)
@@ -33,7 +37,7 @@ int isUserAppUID(int uid)
     return false;
 }
 
-bool switchMountNS(int pid)
+bool Utils::switchMountNS(int pid)
 {
     std::string path = std::string("/proc/") + std::to_string(pid) + "/ns/mnt";
     int ret, fd;
@@ -45,4 +49,24 @@ bool switchMountNS(int pid)
     ret = setns(fd, 0);
     close(fd);
     return ret == 0;
+}
+
+int Utils::executeLambdaInFork(const std::function<void()> &lambda)
+{
+    pid_t pid = fork();
+    ASSERT_DO(executeLambdaInFork, pid != -1, return -1);
+
+    if (pid == 0)
+    {
+        // Child process
+        lambda();
+        exit(EXIT_SUCCESS);
+    }
+    else
+    {
+        // Parent process
+        int status = -1;
+        waitpid(pid, &status, 0);
+        return status;
+    }
 }

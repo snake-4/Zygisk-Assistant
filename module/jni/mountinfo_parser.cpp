@@ -8,6 +8,8 @@
 #include "mount_parser.hpp"
 #include "logging.hpp"
 
+using namespace Parsers;
+
 mountinfo_entry_t::mountinfo_entry_t(int mount_id, int parent_id, int major, int minor,
                                      const std::string &root, const std::string &mount_point,
                                      const std::string &mount_options, const std::string &optional_fields,
@@ -34,7 +36,7 @@ const std::string &mountinfo_entry_t::getFilesystemType() const { return filesys
 const std::string &mountinfo_entry_t::getMountSource() const { return mount_source; }
 const std::unordered_map<std::string, std::string> &mountinfo_entry_t::getSuperOptions() const { return super_options; }
 
-const std::vector<mountinfo_entry_t> &parseSelfMountinfo(bool cached)
+const std::vector<mountinfo_entry_t> &Parsers::parseSelfMountinfo(bool cached)
 {
     static std::vector<mountinfo_entry_t> parser_cache;
     if (cached && !parser_cache.empty())

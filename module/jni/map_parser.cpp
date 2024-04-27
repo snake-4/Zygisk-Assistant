@@ -7,6 +7,8 @@
 #include "map_parser.hpp"
 #include "logging.hpp"
 
+using namespace Parsers;
+
 map_entry_t::map_entry_t(uintptr_t address_start, uintptr_t address_end, uintptr_t offset, const std::string &perms, const std::string &pathname, dev_t device, ino_t inode)
     : address_start(address_start), address_end(address_end), perms(perms),
       offset(offset), device(device), inode(inode), pathname(pathname) {}
@@ -19,7 +21,7 @@ dev_t map_entry_t::getDevice() const { return device; }
 ino_t map_entry_t::getInode() const { return inode; }
 const std::string &map_entry_t::getPathname() const { return pathname; }
 
-const std::vector<map_entry_t> &parseSelfMaps(bool cached)
+const std::vector<map_entry_t> &Parsers::parseSelfMaps(bool cached)
 {
     static std::vector<map_entry_t> parser_cache;
     if (cached && !parser_cache.empty())

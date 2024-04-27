@@ -23,7 +23,7 @@ static const std::unordered_map<std::string, int> mount_flags_procfs = {
     {"relatime", MS_RELATIME},
     {"nosymfollow", MS_NOSYMFOLLOW}};
 
-static bool shouldUnmount(const mountinfo_entry_t &mount_info)
+static bool shouldUnmount(const Parsers::mountinfo_entry_t &mount_info)
 {
     const auto &root = mount_info.getRoot();
 
@@ -31,7 +31,7 @@ static bool shouldUnmount(const mountinfo_entry_t &mount_info)
     return root.starts_with("/adb/");
 }
 
-static bool shouldUnmount(const mount_entry_t &mount)
+static bool shouldUnmount(const Parsers::mount_entry_t &mount)
 {
     const auto &mountPoint = mount.getMountPoint();
     const auto &type = mount.getType();
@@ -66,7 +66,7 @@ void doUnmount()
     std::vector<std::string> mountPoints;
 
     // Check mounts first
-    for (const auto &mount : parseSelfMounts(false))
+    for (const auto &mount : Parsers::parseSelfMounts(false))
     {
         if (shouldUnmount(mount))
         {
@@ -75,7 +75,7 @@ void doUnmount()
     }
 
     // Check mountinfos so that we can find bind mounts as well
-    for (const auto &mount_info : parseSelfMountinfo(false))
+    for (const auto &mount_info : Parsers::parseSelfMountinfo(false))
     {
         if (shouldUnmount(mount_info))
         {
@@ -102,7 +102,7 @@ void doUnmount()
 
 void doRemount()
 {
-    for (const auto &mount : parseSelfMounts(false))
+    for (const auto &mount : Parsers::parseSelfMounts(false))
     {
         if (mount.getMountPoint() == "/data")
         {
@@ -146,7 +146,7 @@ void doHideZygisk()
     std::string filePath;
     uintptr_t startAddress = 0, bssAddress = 0;
 
-    for (const auto &map : parseSelfMaps())
+    for (const auto &map : Parsers::parseSelfMaps())
     {
         if (map.getPathname().ends_with("/libnativebridge.so") && map.getPerms() == "r--p")
         {
@@ -157,8 +157,8 @@ void doHideZygisk()
         }
     }
 
-    ASSERT_EXIT("doHideZygisk", startAddress != 0, return);
-    ASSERT_EXIT("doHideZygisk", reader.load(filePath), return);
+    ASSERT_DO(doHideZygisk, startAddress != 0, return);
+    ASSERT_DO(doHideZygisk, reader.load(filePath), return);
 
     size_t bssSize = 0;
     for (const auto &sec : reader.sections)
@@ -171,7 +171,7 @@ void doHideZygisk()
         }
     }
 
-    ASSERT_EXIT("doHideZygisk", bssAddress != 0, return);
+    ASSERT_DO(doHideZygisk, bssAddress != 0, return);
     LOGD("Found .bss for \"%s\" at 0x%" PRIxPTR " sized %" PRIuPTR " bytes.", filePath.c_str(), bssAddress, bssSize);
 
     uint8_t *pHadError = reinterpret_cast<uint8_t *>(memchr(reinterpret_cast<void *>(bssAddress), 0x01, bssSize));
