@@ -103,8 +103,8 @@ public:
                 do
                 {
                     pid_t pid = getpid();
-                    ASSERT_DO(invokeZygiskCompanion, write(fd, &pid, sizeof(pid)) == sizeof(pid), break);
-                    ASSERT_DO(invokeZygiskCompanion, read(fd, &result, sizeof(result)) == sizeof(result), break);
+                    ASSERT_DO(callbackFunction, write(fd, &pid, sizeof(pid)) == sizeof(pid), break);
+                    ASSERT_DO(callbackFunction, read(fd, &result, sizeof(result)) == sizeof(result), break);
                 } while (false);
                 close(fd);
             }
