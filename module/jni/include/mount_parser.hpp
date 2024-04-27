@@ -22,5 +22,5 @@ private:
     int freq, passno;
 };
 
-std::vector<mount_entry_t> parseMountsFromPath(const char *path);
+const std::vector<mount_entry_t> &parseSelfMounts(bool cached = true);
 std::unordered_map<std::string, std::string> parseMountOptions(const std::string &input);

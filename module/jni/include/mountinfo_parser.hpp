@@ -30,4 +30,4 @@ private:
     std::unordered_map<std::string, std::string> mount_options, super_options;
 };
 
-std::vector<mountinfo_entry_t> parseMountinfosFromPath(const char *path);
+const std::vector<mountinfo_entry_t> &parseSelfMountinfo(bool cached = true);

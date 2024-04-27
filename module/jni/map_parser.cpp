@@ -19,15 +19,20 @@ dev_t map_entry_t::getDevice() const { return device; }
 ino_t map_entry_t::getInode() const { return inode; }
 const std::string &map_entry_t::getPathname() const { return pathname; }
 
-std::vector<map_entry_t> parseMapsFromPath(const char *path)
+const std::vector<map_entry_t> &parseSelfMaps(bool cached)
 {
-    std::vector<map_entry_t> ret;
+    static std::vector<map_entry_t> parser_cache;
+    if (cached && !parser_cache.empty())
+    {
+        return parser_cache;
+    }
+    parser_cache.clear();
 
-    std::ifstream ifs(path, std::ifstream::in);
+    std::ifstream ifs("/proc/self/maps", std::ifstream::in);
     if (!ifs)
     {
-        LOGE("parseMapsFromPath could not open file \"%s\"", path);
-        return ret;
+        LOGE("parseSelfMaps could not open /proc/self/maps");
+        return parser_cache;
     }
 
     for (std::string line; std::getline(ifs, line);)
@@ -45,15 +50,15 @@ std::vector<map_entry_t> parseMapsFromPath(const char *path)
 
         if (iss.fail())
         {
-            LOGE("parseMapsFromPath failed to parse line: %s", line.c_str());
+            LOGE("parseSelfMaps failed to parse line: %s", line.c_str());
             continue;
         }
 
         // This operation can fail, it doesn't matter as it's an optional field.
         std::getline(iss >> std::ws, pathname);
 
-        ret.emplace_back(map_entry_t(address_start, address_end, offset, perms, pathname, makedev(dev_major, dev_minor), inode));
+        parser_cache.emplace_back(map_entry_t(address_start, address_end, offset, perms, pathname, makedev(dev_major, dev_minor), inode));
     }
 
-    return ret;
+    return parser_cache;
 }

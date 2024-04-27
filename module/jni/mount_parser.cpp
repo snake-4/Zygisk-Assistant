@@ -22,21 +22,26 @@ const std::unordered_map<std::string, std::string> &mount_entry_t::getOptions() 
 int mount_entry_t::getDumpFrequency() const { return freq; }
 int mount_entry_t::getPassNumber() const { return passno; }
 
-std::vector<mount_entry_t> parseMountsFromPath(const char *path)
+const std::vector<mount_entry_t> &parseSelfMounts(bool cached)
 {
-    std::vector<mount_entry_t> result;
+    static std::vector<mount_entry_t> parser_cache;
+    if (cached && !parser_cache.empty())
+    {
+        return parser_cache;
+    }
+    parser_cache.clear();
 
     FILE *file;
-    ASSERT_EXIT("parseMountsFromPath", (file = setmntent(path, "r")) != NULL, return result);
+    ASSERT_EXIT("parseSelfMounts", (file = setmntent("/proc/self/mounts", "r")) != NULL, return parser_cache);
 
     struct mntent *entry;
     while ((entry = getmntent(file)) != NULL)
     {
-        result.emplace_back(mount_entry_t(entry));
+        parser_cache.emplace_back(mount_entry_t(entry));
     }
 
     endmntent(file);
-    return result;
+    return parser_cache;
 }
 
 std::unordered_map<std::string, std::string> parseMountOptions(const std::string &input)

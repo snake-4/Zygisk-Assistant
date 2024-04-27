@@ -34,15 +34,20 @@ const std::string &mountinfo_entry_t::getFilesystemType() const { return filesys
 const std::string &mountinfo_entry_t::getMountSource() const { return mount_source; }
 const std::unordered_map<std::string, std::string> &mountinfo_entry_t::getSuperOptions() const { return super_options; }
 
-std::vector<mountinfo_entry_t> parseMountinfosFromPath(const char *path)
+const std::vector<mountinfo_entry_t> &parseSelfMountinfo(bool cached)
 {
-    std::vector<mountinfo_entry_t> ret;
+    static std::vector<mountinfo_entry_t> parser_cache;
+    if (cached && !parser_cache.empty())
+    {
+        return parser_cache;
+    }
+    parser_cache.clear();
 
-    std::ifstream ifs(path, std::ifstream::in);
+    std::ifstream ifs("/proc/self/mountinfo", std::ifstream::in);
     if (!ifs)
     {
-        LOGE("parseMountinfosFromPath could not open file \"%s\"", path);
-        return ret;
+        LOGE("parseSelfMountinfo could not open /proc/self/mountinfo");
+        return parser_cache;
     }
 
     for (std::string line; std::getline(ifs, line);)
@@ -57,7 +62,7 @@ std::vector<mountinfo_entry_t> parseMountinfosFromPath(const char *path)
         iss >> mount_id >> parent_id >> major >> colon >> minor >> root >> mount_point >> mount_options;
         if (iss.fail())
         {
-            LOGE("parseMountinfosFromPath failed to parse the first 6 fields of line: %s", line.c_str());
+            LOGE("parseSelfMountinfo failed to parse the first 6 fields of line: %s", line.c_str());
             continue;
         }
 
@@ -69,22 +74,22 @@ std::vector<mountinfo_entry_t> parseMountinfosFromPath(const char *path)
 
         if (iss.fail())
         {
-            LOGE("parseMountinfosFromPath failed to parse the optional fields of line: %s", line.c_str());
+            LOGE("parseSelfMountinfo failed to parse the optional fields of line: %s", line.c_str());
             continue;
         }
 
         iss >> filesystem_type >> mount_source >> super_options;
         if (iss.fail())
         {
-            LOGE("parseMountinfosFromPath failed to parse the last 3 fields of line: %s", line.c_str());
+            LOGE("parseSelfMountinfo failed to parse the last 3 fields of line: %s", line.c_str());
             continue;
         }
 
-        ret.emplace_back(mountinfo_entry_t(mount_id, parent_id, major, minor,
-                                           root, mount_point, mount_options,
-                                           optional_fields, filesystem_type, mount_source,
-                                           super_options));
+        parser_cache.emplace_back(mountinfo_entry_t(mount_id, parent_id, major, minor,
+                                                    root, mount_point, mount_options,
+                                                    optional_fields, filesystem_type, mount_source,
+                                                    super_options));
     }
 
-    return ret;
+    return parser_cache;
 }

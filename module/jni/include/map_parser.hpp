@@ -25,4 +25,4 @@ private:
     ino_t inode;
 };
 
-std::vector<map_entry_t> parseMapsFromPath(const char *path);
+const std::vector<map_entry_t> &parseSelfMaps(bool cached = true);

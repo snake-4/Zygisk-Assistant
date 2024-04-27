@@ -12,7 +12,7 @@
 
 bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc)
 {
-    for (const auto &map : parseMapsFromPath("/proc/self/maps"))
+    for (const auto &map : parseSelfMaps())
     {
         if (map.getPathname().ends_with("/" + libName))
         {

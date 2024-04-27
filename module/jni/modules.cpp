@@ -38,7 +38,7 @@ static bool shouldUnmount(const mount_entry_t &mount)
     const auto &options = mount.getOptions();
 
     // Unmount everything mounted to /data/adb
-    if (mountPoint.rfind("/data/adb", 0) == 0)
+    if (mountPoint.starts_with("/data/adb"))
         return true;
 
     // Unmount all module overlayfs and tmpfs
@@ -66,7 +66,7 @@ void doUnmount()
     std::vector<std::string> mountPoints;
 
     // Check mounts first
-    for (auto &mount : parseMountsFromPath("/proc/self/mounts"))
+    for (const auto &mount : parseSelfMounts(false))
     {
         if (shouldUnmount(mount))
         {
@@ -75,7 +75,7 @@ void doUnmount()
     }
 
     // Check mountinfos so that we can find bind mounts as well
-    for (auto &mount_info : parseMountinfosFromPath("/proc/self/mountinfo"))
+    for (const auto &mount_info : parseSelfMountinfo(false))
     {
         if (shouldUnmount(mount_info))
         {
@@ -102,31 +102,33 @@ void doUnmount()
 
 void doRemount()
 {
-    std::vector<mount_entry_t> mounts = parseMountsFromPath("/proc/self/mounts");
-    auto data_mount_it = std::find_if(mounts.begin(), mounts.end(), [](const mount_entry_t &mount)
-                                      { return mount.getMountPoint() == "/data"; });
-    if (data_mount_it != mounts.end())
+    for (const auto &mount : parseSelfMounts(false))
     {
-        const auto &options = data_mount_it->getOptions();
-
-        // If errors=remount-ro, remount it with errors=continue
-        if (options.contains("errors") && options.at("errors") == "remount-ro")
+        if (mount.getMountPoint() == "/data")
         {
-            unsigned long flags = MS_REMOUNT;
-            for (const auto &flagName : mount_flags_procfs)
+            const auto &options = mount.getOptions();
+
+            // If errors=remount-ro, remount it with errors=continue
+            if (options.contains("errors") && options.at("errors") == "remount-ro")
             {
-                if (options.contains(flagName.first))
-                    flags |= flagName.second;
+                unsigned long flags = MS_REMOUNT;
+                for (const auto &flagName : mount_flags_procfs)
+                {
+                    if (options.contains(flagName.first))
+                        flags |= flagName.second;
+                }
+
+                if (::mount(NULL, "/data", NULL, flags, "errors=continue") == 0)
+                {
+                    LOGD("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned 0", flags);
+                }
+                else
+                {
+                    LOGW("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned -1: %d (%s)", flags, errno, strerror(errno));
+                }
             }
 
-            if (mount(NULL, "/data", NULL, flags, "errors=continue") == 0)
-            {
-                LOGD("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned 0", flags);
-            }
-            else
-            {
-                LOGW("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned -1: %d (%s)", flags, errno, strerror(errno));
-            }
+            break;
         }
     }
 }
@@ -144,7 +146,7 @@ void doHideZygisk()
     std::string filePath;
     uintptr_t startAddress = 0, bssAddress = 0;
 
-    for (const auto &map : parseMapsFromPath("/proc/self/maps"))
+    for (const auto &map : parseSelfMaps())
     {
         if (map.getPathname().ends_with("/libnativebridge.so") && map.getPerms() == "r--p")
         {
@@ -173,6 +175,9 @@ void doHideZygisk()
     LOGD("Found .bss for \"%s\" at 0x%" PRIxPTR " sized %" PRIuPTR " bytes.", filePath.c_str(), bssAddress, bssSize);
 
     uint8_t *pHadError = reinterpret_cast<uint8_t *>(memchr(reinterpret_cast<void *>(bssAddress), 0x01, bssSize));
-    ASSERT_EXIT("doHideZygisk", pHadError != nullptr, return);
-    *pHadError = 0;
+    if (pHadError != nullptr)
+    {
+        *pHadError = 0;
+        LOGD("libnativebridge.so had_error was reset.");
+    }
 }
