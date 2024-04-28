@@ -2,13 +2,14 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <sys/types.h>
 
 namespace Parsers
 {
     class mountinfo_entry_t
     {
     public:
-        mountinfo_entry_t(int mount_id, int parent_id, int major, int minor,
+        mountinfo_entry_t(int mount_id, int parent_id, dev_t device,
                           const std::string &root, const std::string &mount_point,
                           const std::string &mount_options, const std::string &optional_fields,
                           const std::string &filesystem_type, const std::string &mount_source,
@@ -16,8 +17,7 @@ namespace Parsers
 
         int getMountId() const;
         int getParentId() const;
-        int getMajor() const;
-        int getMinor() const;
+        dev_t getDevice() const;
         const std::string &getRoot() const;
         const std::string &getMountPoint() const;
         const std::unordered_map<std::string, std::string> &getMountOptions() const;
@@ -27,10 +27,21 @@ namespace Parsers
         const std::unordered_map<std::string, std::string> &getSuperOptions() const;
 
     private:
-        int mount_id, parent_id, major, minor;
+        dev_t device;
+        int mount_id, parent_id;
         std::string root, mount_point, optional_fields, filesystem_type, mount_source;
         std::unordered_map<std::string, std::string> mount_options, super_options;
     };
 
     const std::vector<mountinfo_entry_t> &parseSelfMountinfo(bool cached = true);
+
+    class mountinfo_root_resolver
+    {
+    public:
+        mountinfo_root_resolver(const std::vector<mountinfo_entry_t> &mount_infos);
+        std::string resolveRootOf(const mountinfo_entry_t &mount_info) const;
+
+    private:
+        std::unordered_map<dev_t, std::string> device_mount_map;
+    };
 }

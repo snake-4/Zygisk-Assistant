@@ -1,5 +1,4 @@
 #include <string>
-#include <vector>
 #include <set>
 #include <unordered_map>
 #include <cstdint>
@@ -9,9 +8,10 @@
 #include "zygisk.hpp"
 #include "logging.hpp"
 #include "map_parser.hpp"
-#include "mount_parser.hpp"
 #include "mountinfo_parser.hpp"
 #include "utils.hpp"
+
+using namespace Parsers;
 
 static const std::set<std::string> fsname_list = {"KSU", "APatch", "magisk", "worker"};
 static const std::unordered_map<std::string, int> mount_flags_procfs = {
@@ -23,31 +23,29 @@ static const std::unordered_map<std::string, int> mount_flags_procfs = {
     {"relatime", MS_RELATIME},
     {"nosymfollow", MS_NOSYMFOLLOW}};
 
-static bool shouldUnmount(const Parsers::mountinfo_entry_t &mount_info)
+static bool shouldUnmount(const mountinfo_entry_t &mount, const mountinfo_root_resolver &root_resolver)
 {
-    const auto &root = mount_info.getRoot();
+    const auto true_root = root_resolver.resolveRootOf(mount);
+    const auto &mount_point = mount.getMountPoint();
+    const auto &type = mount.getFilesystemType();
 
-    // Unmount all module bind mounts
-    return root.starts_with("/adb/");
-}
+    // Mount is from /data/adb
+    if (true_root.starts_with("/data/adb"))
+        return true;
 
-static bool shouldUnmount(const Parsers::mount_entry_t &mount)
-{
-    const auto &mountPoint = mount.getMountPoint();
-    const auto &type = mount.getType();
-    const auto &options = mount.getOptions();
-
-    // Unmount everything mounted to /data/adb
-    if (mountPoint.starts_with("/data/adb"))
+    // Mount is to /data/adb
+    if (mount_point.starts_with("/data/adb"))
         return true;
 
     // Unmount all module overlayfs and tmpfs
-    if ((type == "overlay" || type == "tmpfs") && fsname_list.contains(mount.getFsName()))
+    if ((type == "overlay" || type == "tmpfs") && fsname_list.contains(mount.getMountSource()))
         return true;
 
     // Unmount all overlayfs with lowerdir/upperdir/workdir starting with /data/adb
     if (type == "overlay")
     {
+        const auto &options = mount.getSuperOptions();
+        
         if (options.contains("lowerdir") && options.at("lowerdir").starts_with("/data/adb"))
             return true;
 
@@ -63,58 +61,38 @@ static bool shouldUnmount(const Parsers::mount_entry_t &mount)
 
 void doUnmount()
 {
-    std::vector<std::string> mountPoints;
+    const auto &mount_infos = parseSelfMountinfo(false);
+    auto root_resolver = mountinfo_root_resolver(mount_infos);
 
-    // Check mounts first
-    for (const auto &mount : Parsers::parseSelfMounts(false))
+    for (auto it = mount_infos.rbegin(); it != mount_infos.rend(); it++)
     {
-        if (shouldUnmount(mount))
+        if (shouldUnmount(*it, root_resolver))
         {
-            mountPoints.push_back(mount.getMountPoint());
-        }
-    }
-
-    // Check mountinfos so that we can find bind mounts as well
-    for (const auto &mount_info : Parsers::parseSelfMountinfo(false))
-    {
-        if (shouldUnmount(mount_info))
-        {
-            mountPoints.push_back(mount_info.getMountPoint());
-        }
-    }
-
-    // Sort by string lengths, descending
-    std::sort(mountPoints.begin(), mountPoints.end(), [](const auto &lhs, const auto &rhs)
-              { return lhs.size() > rhs.size(); });
-
-    for (const auto &mountPoint : mountPoints)
-    {
-        if (umount2(mountPoint.c_str(), MNT_DETACH) == 0)
-        {
-            LOGD("umount2(\"%s\", MNT_DETACH) returned 0", mountPoint.c_str());
-        }
-        else
-        {
-            LOGW("umount2(\"%s\", MNT_DETACH) returned -1: %d (%s)", mountPoint.c_str(), errno, strerror(errno));
+            const auto &mount_point_cstr = it->getMountPoint().c_str();
+            if (umount2(mount_point_cstr, MNT_DETACH) == 0)
+                LOGD("umount2(\"%s\", MNT_DETACH) returned 0", mount_point_cstr);
+            else
+                LOGW("umount2(\"%s\", MNT_DETACH) returned -1: %d (%s)", mount_point_cstr, errno, strerror(errno));
         }
     }
 }
 
 void doRemount()
 {
-    for (const auto &mount : Parsers::parseSelfMounts(false))
+    for (const auto &mount : parseSelfMountinfo(false))
     {
         if (mount.getMountPoint() == "/data")
         {
-            const auto &options = mount.getOptions();
+            const auto &superOptions = mount.getSuperOptions();
+            const auto &mountOptions = mount.getMountOptions();
 
             // If errors=remount-ro, remount it with errors=continue
-            if (options.contains("errors") && options.at("errors") == "remount-ro")
+            if (superOptions.contains("errors") && superOptions.at("errors") == "remount-ro")
             {
                 unsigned long flags = MS_REMOUNT;
                 for (const auto &flagName : mount_flags_procfs)
                 {
-                    if (options.contains(flagName.first))
+                    if (mountOptions.contains(flagName.first))
                         flags |= flagName.second;
                 }
 
@@ -146,7 +124,7 @@ void doHideZygisk()
     std::string filePath;
     uintptr_t startAddress = 0, bssAddress = 0;
 
-    for (const auto &map : Parsers::parseSelfMaps())
+    for (const auto &map : parseSelfMaps())
     {
         if (map.getPathname().ends_with("/libnativebridge.so") && map.getPerms() == "r--p")
         {
