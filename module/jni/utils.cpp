@@ -39,7 +39,7 @@ int Utils::isUserAppUID(int uid)
 
 bool Utils::switchMountNS(int pid)
 {
-    std::string path = std::string("/proc/") + std::to_string(pid) + "/ns/mnt";
+    std::string path = "/proc/" + std::to_string(pid) + "/ns/mnt";
     int ret, fd;
     if ((fd = open(path.c_str(), O_RDONLY)) < 0)
     {

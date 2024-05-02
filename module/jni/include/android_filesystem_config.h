@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /*
  * This file is consumed by build/tools/fs_config and is used
  * for generating various files. Anything #define AID_<name>
@@ -33,20 +32,16 @@
  * passwd and group files.  There are ranges in this file reserved for AIDs for each 3rd party
  * partition, from which the system reads passwd and group files.
  */
-
 #pragma once
-
 /* This is the main Users and Groups config for the platform.
  * DO NOT EVER RENUMBER
  */
-
 #define AID_ROOT 0 /* traditional unix root user */
-/* The following are for LTP and should only be used for testing */
-#define AID_DAEMON 1 /* traditional unix daemon owner */
-#define AID_BIN 2    /* traditional unix binaries owner */
-
+/* The following are for tests like LTP and should only be used for testing. */
+#define AID_DAEMON 1 /* Traditional unix daemon owner. */
+#define AID_BIN 2    /* Traditional unix binaries owner. */
+#define AID_SYS 3    /* A group with the same gid on Linux/macOS/Android. */
 #define AID_SYSTEM 1000 /* system server */
-
 #define AID_RADIO 1001           /* telephony subsystem, RIL */
 #define AID_BLUETOOTH 1002       /* bluetooth subsystem */
 #define AID_GRAPHICS 1003        /* graphics devices */
@@ -127,12 +122,22 @@
 #define AID_EXT_DATA_RW 1078      /* GID for app-private data directories on external storage */
 #define AID_EXT_OBB_RW 1079       /* GID for OBB directories on external storage */
 #define AID_CONTEXT_HUB 1080      /* GID for access to the Context Hub */
+#define AID_VIRTUALIZATIONSERVICE 1081 /* VirtualizationService daemon */
+#define AID_ARTD 1082             /* ART Service daemon */
+#define AID_UWB 1083              /* UWB subsystem */
+#define AID_THREAD_NETWORK 1084   /* Thread Network subsystem */
+#define AID_DICED 1085            /* Android's DICE daemon */
+#define AID_DMESGD 1086           /* dmesg parsing daemon for kernel report collection */
+#define AID_JC_WEAVER 1087        /* Javacard Weaver HAL - to manage omapi ARA rules */
+#define AID_JC_STRONGBOX 1088     /* Javacard Strongbox HAL - to manage omapi ARA rules */
+#define AID_JC_IDENTITYCRED 1089  /* Javacard Identity Cred HAL - to manage omapi ARA rules */
+#define AID_SDK_SANDBOX 1090      /* SDK sandbox virtual UID */
+#define AID_SECURITY_LOG_WRITER 1091 /* write to security log */
+#define AID_PRNG_SEEDER 1092         /* PRNG seeder daemon */
 /* Changes to this file must be made in AOSP, *not* in internal branches. */
-
 #define AID_SHELL 2000 /* adb and debug shell user */
 #define AID_CACHE 2001 /* cache access */
 #define AID_DIAG 2002  /* access to diagnostic resources */
-
 /* The range 2900-2999 is reserved for the vendor partition */
 /* Note that the two 'OEM' ranges pre-dated the vendor partition, so they take the legacy 'OEM'
  * name. Additionally, they pre-dated passwd/group files, so there are users and groups named oem_#
@@ -141,7 +146,6 @@
  * value. */
 #define AID_OEM_RESERVED_START 2900
 #define AID_OEM_RESERVED_END 2999
-
 /* The 3000 series are intended for use as supplemental group id's only.
  * They indicate special Android capabilities that the kernel is aware of. */
 #define AID_NET_BT_ADMIN 3001 /* bluetooth: create any socket */
@@ -154,47 +158,36 @@
 #define AID_READPROC 3009     /* Allow /proc read access */
 #define AID_WAKELOCK 3010     /* Allow system wakelock read/write access */
 #define AID_UHID 3011         /* Allow read/write to /dev/uhid node */
-
+#define AID_READTRACEFS 3012  /* Allow tracefs read */
 /* The range 5000-5999 is also reserved for vendor partition. */
 #define AID_OEM_RESERVED_2_START 5000
 #define AID_OEM_RESERVED_2_END 5999
-
 /* The range 6000-6499 is reserved for the system partition. */
 #define AID_SYSTEM_RESERVED_START 6000
 #define AID_SYSTEM_RESERVED_END 6499
-
 /* The range 6500-6999 is reserved for the odm partition. */
 #define AID_ODM_RESERVED_START 6500
 #define AID_ODM_RESERVED_END 6999
-
 /* The range 7000-7499 is reserved for the product partition. */
 #define AID_PRODUCT_RESERVED_START 7000
 #define AID_PRODUCT_RESERVED_END 7499
-
 /* The range 7500-7999 is reserved for the system_ext partition. */
 #define AID_SYSTEM_EXT_RESERVED_START 7500
 #define AID_SYSTEM_EXT_RESERVED_END 7999
-
 #define AID_EVERYBODY 9997 /* shared between all apps in the same profile */
 #define AID_MISC 9998      /* access to misc storage */
 #define AID_NOBODY 9999
-
 #define AID_APP 10000       /* TODO: switch users over to AID_APP_START */
 #define AID_APP_START 10000 /* first app user */
 #define AID_APP_END 19999   /* last app user */
-
 #define AID_CACHE_GID_START 20000 /* start of gids for apps to mark cached data */
 #define AID_CACHE_GID_END 29999   /* end of gids for apps to mark cached data */
-
 #define AID_EXT_GID_START 30000 /* start of gids for apps to mark external data */
 #define AID_EXT_GID_END 39999   /* end of gids for apps to mark external data */
-
 #define AID_EXT_CACHE_GID_START 40000 /* start of gids for apps to mark external cached data */
 #define AID_EXT_CACHE_GID_END 49999   /* end of gids for apps to mark external cached data */
-
 #define AID_SHARED_GID_START 50000 /* start of gids for apps in each user to share */
 #define AID_SHARED_GID_END 59999   /* end of gids for apps in each user to share */
-
 /*
  * This is a magic number in the kernel and not something that was picked
  * arbitrarily. This value is returned whenever a uid that has no mapping in the
@@ -202,14 +195,14 @@
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/highuid.h?h=v4.4#n40
  */
 #define AID_OVERFLOWUID 65534 /* unmapped user in the user namespace */
-
+/* use the ranges below to determine whether a process is sdk sandbox */
+#define AID_SDK_SANDBOX_PROCESS_START 20000 /* start of uids allocated to sdk sandbox processes */
+#define AID_SDK_SANDBOX_PROCESS_END 29999   /* end of uids allocated to sdk sandbox processes */
 /* use the ranges below to determine whether a process is isolated */
 #define AID_ISOLATED_START 90000 /* start of uids for fully isolated sandboxed processes */
 #define AID_ISOLATED_END 99999   /* end of uids for fully isolated sandboxed processes */
-
 #define AID_USER 100000        /* TODO: switch users over to AID_USER_OFFSET */
 #define AID_USER_OFFSET 100000 /* offset for uid ranges for each user */
-
 /*
  * android_ids has moved to pwd/grp functionality.
  * If you need to add one, the structure is now
