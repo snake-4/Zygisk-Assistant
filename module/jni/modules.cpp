@@ -1,9 +1,17 @@
 #include <string>
+#include <string_view>
 #include <set>
+#include <atomic>
 #include <unordered_map>
 #include <cstdint>
 #include <sys/mount.h>
 #include <elfio/elfio.hpp>
+
+// These includes are from the system_properties submodule, not NDK!
+#define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
+#include <api/system_properties.h>
+#include <api/_system_properties.h>
+#include <system_properties/prop_info.h>
 
 #include "zygisk.hpp"
 #include "logging.hpp"
@@ -45,7 +53,7 @@ static bool shouldUnmount(const mountinfo_entry_t &mount, const mountinfo_root_r
     if (type == "overlay")
     {
         const auto &options = mount.getSuperOptions();
-        
+
         if (options.contains("lowerdir") && options.at("lowerdir").starts_with("/data/adb"))
             return true;
 
@@ -158,4 +166,54 @@ void doHideZygisk()
         *pHadError = 0;
         LOGD("libnativebridge.so had_error was reset.");
     }
+}
+
+void doMrProp()
+{
+    static bool isInitialized = false;
+    static int resetCount = 0;
+    if (!isInitialized)
+    {
+        isInitialized = __system_properties_init() == 0;
+    }
+
+    if (!isInitialized)
+    {
+        LOGE("Could not initialize system_properties!");
+        return;
+    }
+
+    int ret = __system_property_foreach(
+        [](const prop_info *pi, void *)
+        {
+            if (std::string_view(pi->name).starts_with("ro.") && !pi->is_long())
+            {
+                auto serial = std::atomic_load_explicit(&pi->serial, std::memory_order_relaxed);
+
+                // Well this is a bit dangerous
+                bool shouldReset = (serial & 0xFF) != 0;
+                auto length = strlen(pi->value);
+
+                if (!shouldReset)
+                {
+                    for (size_t i = length; i < PROP_VALUE_MAX; i++)
+                    {
+                        if (pi->value[i] != 0)
+                        {
+                            shouldReset = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (shouldReset)
+                {
+                    resetCount++;
+                    __system_property_update(const_cast<prop_info *>(pi), pi->value, length);
+                }
+            }
+        },
+        nullptr);
+
+    LOGD("__system_property_foreach returned %d. resetCount=%d", ret, resetCount);
 }

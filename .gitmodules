@@ -4,3 +4,6 @@
 [submodule "module/jni/libcxx"]
 	path = module/jni/libcxx
 	url = https://github.com/topjohnwu/libcxx.git
+[submodule "module/jni/system_properties"]
+	path = module/jni/system_properties
+	url = https://github.com/topjohnwu/system_properties

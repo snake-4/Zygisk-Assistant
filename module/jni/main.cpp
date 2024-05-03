@@ -113,9 +113,8 @@ public:
                 LOGD("Invoking the companion was successful.");
             else
             {
-                LOGW("Invoking the companion failed. Performing operations in Zygote context!");
+                LOGW("Invoking the companion failed. Functionality will be limited in Zygote context!");
                 doUnmount();
-                doRemount();
             }
 
             doHideZygisk();
@@ -165,6 +164,7 @@ void zygisk_companion_handler(int fd)
             {
                 doUnmount();
                 doRemount();
+                doMrProp();
             }));
     }();
 
