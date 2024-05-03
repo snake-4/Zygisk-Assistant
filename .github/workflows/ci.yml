@@ -1,6 +1,7 @@
 name: CI
-
 on: [push]
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -21,28 +22,29 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build with Gradle
-        run: |
-          chmod +x ./gradlew
-          ./gradlew zipRelease
-          ./gradlew zipDebug
+        run: ./gradlew moduleZipRelease moduleZipDebug
 
-      - name: Prepare artifact
+      - name: Set CI Variables
         if: success()
         id: prepareArtifact
         run: |
-          releaseName=`ls module/build/outputs/release/*-release.zip | awk -F '(/|.zip)' '{print $5}'` && echo "releaseName=$releaseName" >> $GITHUB_OUTPUT
-          debugName=`ls module/build/outputs/release/*-debug.zip | awk -F '(/|.zip)' '{print $5}'` && echo "debugName=$debugName" >> $GITHUB_OUTPUT
-          unzip module/build/outputs/release/*-release.zip -d extracted-release
-          unzip module/build/outputs/release/*-debug.zip -d extracted-debug
+          echo "releaseName=$(basename module/build/out/*-release.zip .zip)" >> $GITHUB_OUTPUT
+          echo "debugName=$(basename module/build/out/*-debug.zip .zip)" >> $GITHUB_OUTPUT
 
-      - name: Upload release
+      - name: Upload Release Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.prepareArtifact.outputs.releaseName }}
-          path: "./extracted-release/*"
+          path: "module/build/out/release"
 
-      - name: Upload debug
+      - name: Upload Debug Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.prepareArtifact.outputs.debugName }}
-          path: "./extracted-debug/*"
+          path: "module/build/out/debug"
+
+      - name: Create a release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: module/build/out/*.zip
