@@ -1,3 +1,4 @@
+#include <string.h>
 #include <string>
 #include <functional>
 #include <format>
@@ -13,6 +14,20 @@
 #include "logging.hpp"
 
 using namespace Utils;
+
+size_t Utils::safeStringCopy(char *dest, const char *src, size_t dest_size)
+{
+    if (dest_size < 1)
+        return 0;
+
+    *dest = 0;
+    // strncpy does not null terminate, strlcpy fails on non-terminated src
+    // strncat is relatively safe but may write count+1 because of the null terminator
+    strncat(dest, src, dest_size - 1);
+
+    // strlen is safe here because dest is now null-terminated
+    return strlen(dest);
+}
 
 bool Utils::hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc)
 {

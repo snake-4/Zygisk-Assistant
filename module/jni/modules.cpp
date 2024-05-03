@@ -1,4 +1,5 @@
 #include <string>
+#include <cstring>
 #include <string_view>
 #include <set>
 #include <atomic>
@@ -168,49 +169,53 @@ void doHideZygisk()
     }
 }
 
+static bool shouldResetProperty(const prop_info *pi)
+{
+    // Read-write properties or properties with long values should not be reset
+    if (strncmp(pi->name, "ro.", 3) != 0 || pi->is_long())
+        return false;
+
+    // Check if the serial indicates that it was modified
+    auto serial = std::atomic_load_explicit(&pi->serial, std::memory_order_relaxed);
+    if ((serial & 0xFFFFFF) != 0)
+        return true;
+
+    // Check if any characters exist beyond the null-terminated string
+    size_t length = strnlen(pi->value, PROP_VALUE_MAX);
+    for (size_t i = length; i < PROP_VALUE_MAX; i++)
+    {
+        if (pi->value[i] != '\0')
+            return true;
+    }
+
+    return false;
+}
+
 void doMrProp()
 {
     static bool isInitialized = false;
     static int resetCount = 0;
     if (!isInitialized)
     {
-        isInitialized = __system_properties_init() == 0;
-    }
-
-    if (!isInitialized)
-    {
-        LOGE("Could not initialize system_properties!");
-        return;
+        if (__system_properties_init() == -1)
+        {
+            LOGE("Could not initialize system_properties!");
+            return;
+        }
+        isInitialized = true;
     }
 
     int ret = __system_property_foreach(
         [](const prop_info *pi, void *)
         {
-            if (std::string_view(pi->name).starts_with("ro.") && !pi->is_long())
+            if (shouldResetProperty(pi))
             {
-                auto serial = std::atomic_load_explicit(&pi->serial, std::memory_order_relaxed);
+                // Overlapping pointers in strncpy is undefined behavior so make a copy.
+                char buffer[PROP_VALUE_MAX];
+                size_t length = Utils::safeStringCopy(buffer, pi->value, PROP_VALUE_MAX);
 
-                // Well this is a bit dangerous
-                bool shouldReset = (serial & 0xFF) != 0;
-                auto length = strlen(pi->value);
-
-                if (!shouldReset)
-                {
-                    for (size_t i = length; i < PROP_VALUE_MAX; i++)
-                    {
-                        if (pi->value[i] != 0)
-                        {
-                            shouldReset = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (shouldReset)
-                {
-                    resetCount++;
-                    __system_property_update(const_cast<prop_info *>(pi), pi->value, length);
-                }
+                __system_property_update(const_cast<prop_info *>(pi), buffer, length);
+                resetCount++;
             }
         },
         nullptr);

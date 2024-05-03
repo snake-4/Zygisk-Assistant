@@ -9,21 +9,29 @@
     ret (*old_##func)(__VA_ARGS__) = nullptr; \
     ret new_##func(__VA_ARGS__)
 
-#define ASSERT_LOG(tag, expr)                                                                        \
-    if (!(expr))                                                                                     \
-    {                                                                                                \
+#define ASSERT_LOG(tag, expr)                                                                         \
+    if (!(expr))                                                                                      \
+    {                                                                                                 \
         LOGE("%s:%d Assertion %s failed. %d:%s", #tag, __LINE__, #expr, errno, std::strerror(errno)); \
     }
 
-#define ASSERT_DO(tag, expr, ret)                                                                  \
-    if (!(expr))                                                                                     \
-    {                                                                                                \
+#define ASSERT_DO(tag, expr, ret)                                                                     \
+    if (!(expr))                                                                                      \
+    {                                                                                                 \
         LOGE("%s:%d Assertion %s failed. %d:%s", #tag, __LINE__, #expr, errno, std::strerror(errno)); \
-        ret;                                                                                         \
+        ret;                                                                                          \
     }
 
 namespace Utils
 {
+    /*
+     * Always null terminates dest if dest_size is at least 1.
+     * Writes at most dest_size bytes to dest including null terminator.
+     * Reads at most dest_size bytes from src.
+     * Returns strlen(dest)
+     */
+    size_t safeStringCopy(char *dest, const char *src, size_t dest_size);
+
     bool switchMountNS(int pid);
     int isUserAppUID(int uid);
     bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc);
