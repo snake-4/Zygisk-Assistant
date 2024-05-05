@@ -9,6 +9,7 @@
 #include "logging.hpp"
 #include "utils.hpp"
 #include "modules.hpp"
+#include "fd_reopener.hpp"
 
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
@@ -46,6 +47,8 @@ DCL_HOOK_FUNC(static int, unshare, int flags)
 /*
  * The reason why we hook setresuid is because so far it has been unconditionally called
  * and we still have CAP_SYS_ADMIN during this call.
+ * Also, KSU hooks setuid and unmounts some overlays
+ * so we have to run our code before the syscall.
  */
 DCL_HOOK_FUNC(static int, setresuid, uid_t ruid, uid_t euid, uid_t suid)
 {
@@ -97,6 +100,8 @@ public:
 
         callbackFunction = [fd = companionFd]()
         {
+            FDReopener::ScopedRegularReopener srr;
+
             bool result = false;
             if (fd != -1)
             {
