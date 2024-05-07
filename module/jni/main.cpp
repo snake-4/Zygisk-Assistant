@@ -155,23 +155,20 @@ private:
 
 void zygisk_companion_handler(int fd)
 {
-    bool result = [&]() -> bool
-    {
-        pid_t pid;
-        ASSERT_DO(zygisk_companion_handler, read(fd, &pid, sizeof(pid)) == sizeof(pid), return false);
-        ASSERT_DO(zygisk_companion_handler, unshare(CLONE_NEWNS) != -1, return false);
-        ASSERT_DO(zygisk_companion_handler, Utils::switchMountNS(pid), return false);
-        LOGD("zygisk_companion_handler processing namespace of pid=%d", pid);
+    pid_t pid;
+    ASSERT_DO(zygisk_companion_handler, read(fd, &pid, sizeof(pid)) == sizeof(pid), return);
+    LOGD("zygisk_companion_handler processing namespace of pid=%d", pid);
 
-        // setns mount namespace is not effective until a fork(?)
-        return WIFEXITED(Utils::executeLambdaInFork(
-            []()
-            {
-                doUnmount();
-                doRemount();
-                doMrProp();
-            }));
-    }();
+    // setns requires the caller to be single-threaded
+    bool result = WIFEXITED(Utils::forkAndInvoke(
+        [pid]()
+        {
+            ASSERT_DO(zygisk_companion_handler, Utils::switchMountNS(pid), return 1);
+            doUnmount();
+            doRemount();
+            doMrProp();
+            return 0;
+        }));
 
     ASSERT_LOG(zygisk_companion_handler, write(fd, &result, sizeof(result)) == sizeof(result));
 }

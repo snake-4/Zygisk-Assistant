@@ -35,5 +35,5 @@ namespace Utils
     bool switchMountNS(int pid);
     int isUserAppUID(int uid);
     bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc);
-    int executeLambdaInFork(const std::function<void()> &lambda);
+    int forkAndInvoke(const std::function<int()> &lambda);
 }

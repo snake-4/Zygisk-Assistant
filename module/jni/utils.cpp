@@ -56,7 +56,7 @@ bool Utils::switchMountNS(int pid)
 {
     std::string path = "/proc/" + std::to_string(pid) + "/ns/mnt";
     int ret, fd;
-    if ((fd = open(path.c_str(), O_RDONLY)) < 0)
+    if ((fd = open(path.c_str(), O_RDONLY | O_CLOEXEC)) < 0)
     {
         return false;
     }
@@ -66,22 +66,17 @@ bool Utils::switchMountNS(int pid)
     return ret == 0;
 }
 
-int Utils::executeLambdaInFork(const std::function<void()> &lambda)
+int Utils::forkAndInvoke(const std::function<int()> &lambda)
 {
     pid_t pid = fork();
-    ASSERT_DO(executeLambdaInFork, pid != -1, return -1);
+    if (pid == -1)
+        return -1;
 
-    if (pid == 0)
-    {
-        // Child process
-        lambda();
-        exit(EXIT_SUCCESS);
-    }
-    else
-    {
-        // Parent process
-        int status = -1;
-        waitpid(pid, &status, 0);
-        return status;
-    }
+    if (pid == 0) // Child process
+        exit(lambda());
+
+    // Parent process
+    int status = -1;
+    waitpid(pid, &status, 0);
+    return status;
 }
