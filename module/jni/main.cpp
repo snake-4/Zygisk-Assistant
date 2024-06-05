@@ -19,16 +19,17 @@ static std::function<void()> callbackFunction = []() {};
 
 /*
  * [What's the purpose of this hook?]
- * Calling unshare twice invalidates existing FD links, which fails Zygote sanity checks.
- * So we prevent further namespaces by hooking unshare.
+ * Hooking unshare is necessary to stop Zygote from calling unshare a second time,
+ * because that breaks the FDs. We handle this by reopening FDs,
+ * allowing us to call unshare twice safely in our callback.
  *
  * [Doesn't Android already call unshare?]
- * Whether there's going to be an unshare or not changes with each major Android version
- * so we unconditionally unshare in preAppSpecialize.
- * > Android 5: Conditionally unshares
- * > Android 6: Always unshares
- * > Android 7-11: Conditionally unshares
- * > Android 12-14: Always unshares
+ * Android's use of unshare changes with each major version, so we always call unshare
+ * in preAppSpecialize.
+ * > Android 5: Sometimes calls unshare
+ * > Android 6: Always calls unshare
+ * > Android 7-11: Sometimes calls unshare
+ * > Android 12-14: Always calls unshare
  */
 DCL_HOOK_FUNC(static int, unshare, int flags)
 {
@@ -45,15 +46,37 @@ DCL_HOOK_FUNC(static int, unshare, int flags)
 }
 
 /*
- * The reason why we hook setresuid is because so far it has been unconditionally called
- * and we still have CAP_SYS_ADMIN during this call.
- * Also, KSU hooks setuid and unmounts some overlays
- * so we have to run our code before the syscall.
+ * [What's the purpose of this hook?]
+ * Hooking setresuid ensures we can execute code while we still have CAP_SYS_ADMIN,
+ * which is necessary for some operations.
+ * This hook is necessary because setresuid is called unconditionally,
+ * and we need to perform actions before this syscall.
  */
 DCL_HOOK_FUNC(static int, setresuid, uid_t ruid, uid_t euid, uid_t suid)
 {
     callbackFunction();
     return old_setresuid(ruid, euid, suid);
+}
+
+/*
+ * [Why is this function needed?]
+ * This function unconditionally calls unshare to create a new mount namespace.
+ * It ensures that the new namespace is isolated but still allows propagation of mount
+ * events from the parent namespace by setting the root as MS_SLAVE.
+ */
+static bool new_mount_ns()
+{
+    /*
+     * Unconditional unshare.
+     */
+    ASSERT_DO(new_mount_ns, old_unshare(CLONE_NEWNS) != -1, return false);
+
+    /*
+     * Mount the app mount namespace's root as MS_SLAVE, so every mount/umount from
+     * Zygote shared pre-specialization namespace is propagated to this one.
+     */
+    ASSERT_DO(new_mount_ns, mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) != -1, return false);
+    return true;
 }
 
 class ZygiskModule : public zygisk::ModuleBase
@@ -80,17 +103,6 @@ public:
         }
         LOGD("Processing ppid=%d uid=%d isChildZygote=%d", getppid(), args->uid, isChildZygote);
 
-        /*
-         * Read the comment above unshare hook.
-         */
-        ASSERT_DO(preAppSpecialize, unshare(CLONE_NEWNS) != -1, return);
-
-        /*
-         * Mount the app mount namespace's root as MS_SLAVE, so every mount/umount from
-         * Zygote shared pre-specialization namespace is propagated to this one.
-         */
-        ASSERT_DO(preAppSpecialize, mount("rootfs", "/", NULL, (MS_SLAVE | MS_REC), NULL) != -1, return);
-
         ASSERT_DO(preAppSpecialize, hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare), return);
         ASSERT_DO(preAppSpecialize, hookPLTByName("libandroid_runtime.so", "setresuid", new_setresuid, &old_setresuid), return);
 
@@ -100,7 +112,12 @@ public:
 
         callbackFunction = [fd = companionFd]()
         {
+            // Call only once per process.
+            callbackFunction = []() {};
             FDReopener::ScopedRegularReopener srr;
+            
+            if (!new_mount_ns())
+                return;
 
             bool result = false;
             if (fd != -1)
@@ -124,8 +141,11 @@ public:
 
             doHideZygisk();
 
-            // Call only once per process.
-            callbackFunction = []() {};
+            // [Why do we call unshare twice?]
+            // We call unshare twice to regenerate mount IDs.
+            // FDReopener handles the FD link problem mentioned in the unshare hook.
+            if (!new_mount_ns())
+                return;
         };
     }
 
