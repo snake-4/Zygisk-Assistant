@@ -9,5 +9,5 @@ LOCAL_LDLIBS := -llog
 include $(BUILD_SHARED_LIBRARY)
 
 include jni/libcxx/Android.mk
-include jni/system_properties/Android.mk
+include jni/aosp_system_properties/Android.mk
 include jni/aosp_fd_utils/Android.mk
