@@ -9,21 +9,21 @@
 
 using namespace Parsers;
 
-map_entry_t::map_entry_t(uintptr_t address_start, uintptr_t address_end, uintptr_t offset, const std::string &perms, const std::string &pathname, dev_t device, ino_t inode)
+map_entry::map_entry(uintptr_t address_start, uintptr_t address_end, uintptr_t offset, const std::string &perms, const std::string &pathname, dev_t device, ino_t inode)
     : address_start(address_start), address_end(address_end), perms(perms),
       offset(offset), device(device), inode(inode), pathname(pathname) {}
 
-uintptr_t map_entry_t::getAddressStart() const { return address_start; }
-uintptr_t map_entry_t::getAddressEnd() const { return address_end; }
-const std::string &map_entry_t::getPerms() const { return perms; }
-uintptr_t map_entry_t::getOffset() const { return offset; }
-dev_t map_entry_t::getDevice() const { return device; }
-ino_t map_entry_t::getInode() const { return inode; }
-const std::string &map_entry_t::getPathname() const { return pathname; }
+uintptr_t map_entry::getAddressStart() const { return address_start; }
+uintptr_t map_entry::getAddressEnd() const { return address_end; }
+const std::string &map_entry::getPerms() const { return perms; }
+uintptr_t map_entry::getOffset() const { return offset; }
+dev_t map_entry::getDevice() const { return device; }
+ino_t map_entry::getInode() const { return inode; }
+const std::string &map_entry::getPathname() const { return pathname; }
 
-const std::vector<map_entry_t> &Parsers::parseSelfMaps(bool cached)
+const std::vector<map_entry> &Parsers::parseSelfMaps(bool cached)
 {
-    static std::vector<map_entry_t> parser_cache;
+    static std::vector<map_entry> parser_cache;
     if (cached && !parser_cache.empty())
     {
         return parser_cache;
@@ -59,7 +59,7 @@ const std::vector<map_entry_t> &Parsers::parseSelfMaps(bool cached)
         // This operation can fail, it doesn't matter as it's an optional field.
         std::getline(iss >> std::ws, pathname);
 
-        parser_cache.emplace_back(map_entry_t(address_start, address_end, offset, perms, pathname, makedev(dev_major, dev_minor), inode));
+        parser_cache.emplace_back(map_entry(address_start, address_end, offset, perms, pathname, makedev(dev_major, dev_minor), inode));
     }
 
     return parser_cache;

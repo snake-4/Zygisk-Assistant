@@ -6,10 +6,10 @@
 
 namespace Parsers
 {
-    class mountinfo_entry_t
+    class mountinfo_entry
     {
     public:
-        mountinfo_entry_t(int mount_id, int parent_id, dev_t device,
+        mountinfo_entry(int mount_id, int parent_id, dev_t device,
                           const std::string &root, const std::string &mount_point,
                           const std::string &mount_options, const std::string &optional_fields,
                           const std::string &filesystem_type, const std::string &mount_source,
@@ -33,13 +33,13 @@ namespace Parsers
         std::unordered_map<std::string, std::string> mount_options, super_options;
     };
 
-    const std::vector<mountinfo_entry_t> &parseSelfMountinfo(bool cached = true);
+    const std::vector<mountinfo_entry> &parseSelfMountinfo(bool cached = true);
 
     class mountinfo_root_resolver
     {
     public:
-        mountinfo_root_resolver(const std::vector<mountinfo_entry_t> &mount_infos);
-        std::string resolveRootOf(const mountinfo_entry_t &mount_info) const;
+        mountinfo_root_resolver(const std::vector<mountinfo_entry> &mount_infos);
+        std::string resolveRootOf(const mountinfo_entry &mount_info) const;
 
     private:
         std::unordered_map<dev_t, std::string> device_mount_map;

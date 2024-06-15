@@ -32,7 +32,7 @@ static const std::unordered_map<std::string, int> mount_flags_procfs = {
     {"relatime", MS_RELATIME},
     {"nosymfollow", MS_NOSYMFOLLOW}};
 
-static bool shouldUnmount(const mountinfo_entry_t &mount, const mountinfo_root_resolver &root_resolver)
+static bool shouldUnmount(const mountinfo_entry &mount, const mountinfo_root_resolver &root_resolver)
 {
     const auto true_root = root_resolver.resolveRootOf(mount);
     const auto &mount_point = mount.getMountPoint();

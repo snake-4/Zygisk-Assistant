@@ -30,7 +30,7 @@ static std::unordered_map<std::string, std::string> parseMountOptions(const std:
     return ret;
 }
 
-mountinfo_entry_t::mountinfo_entry_t(int mount_id, int parent_id, dev_t device,
+mountinfo_entry::mountinfo_entry(int mount_id, int parent_id, dev_t device,
                                      const std::string &root, const std::string &mount_point,
                                      const std::string &mount_options, const std::string &optional_fields,
                                      const std::string &filesystem_type, const std::string &mount_source,
@@ -44,20 +44,20 @@ mountinfo_entry_t::mountinfo_entry_t(int mount_id, int parent_id, dev_t device,
     this->super_options = parseMountOptions(super_options);
 }
 
-int mountinfo_entry_t::getMountId() const { return mount_id; }
-int mountinfo_entry_t::getParentId() const { return parent_id; }
-dev_t mountinfo_entry_t::getDevice() const { return device; }
-const std::string &mountinfo_entry_t::getRoot() const { return root; }
-const std::string &mountinfo_entry_t::getMountPoint() const { return mount_point; }
-const std::unordered_map<std::string, std::string> &mountinfo_entry_t::getMountOptions() const { return mount_options; }
-const std::string &mountinfo_entry_t::getOptionalFields() const { return optional_fields; }
-const std::string &mountinfo_entry_t::getFilesystemType() const { return filesystem_type; }
-const std::string &mountinfo_entry_t::getMountSource() const { return mount_source; }
-const std::unordered_map<std::string, std::string> &mountinfo_entry_t::getSuperOptions() const { return super_options; }
+int mountinfo_entry::getMountId() const { return mount_id; }
+int mountinfo_entry::getParentId() const { return parent_id; }
+dev_t mountinfo_entry::getDevice() const { return device; }
+const std::string &mountinfo_entry::getRoot() const { return root; }
+const std::string &mountinfo_entry::getMountPoint() const { return mount_point; }
+const std::unordered_map<std::string, std::string> &mountinfo_entry::getMountOptions() const { return mount_options; }
+const std::string &mountinfo_entry::getOptionalFields() const { return optional_fields; }
+const std::string &mountinfo_entry::getFilesystemType() const { return filesystem_type; }
+const std::string &mountinfo_entry::getMountSource() const { return mount_source; }
+const std::unordered_map<std::string, std::string> &mountinfo_entry::getSuperOptions() const { return super_options; }
 
-const std::vector<mountinfo_entry_t> &Parsers::parseSelfMountinfo(bool cached)
+const std::vector<mountinfo_entry> &Parsers::parseSelfMountinfo(bool cached)
 {
-    static std::vector<mountinfo_entry_t> parser_cache;
+    static std::vector<mountinfo_entry> parser_cache;
     if (cached && !parser_cache.empty())
     {
         return parser_cache;
@@ -106,7 +106,7 @@ const std::vector<mountinfo_entry_t> &Parsers::parseSelfMountinfo(bool cached)
             continue;
         }
 
-        parser_cache.emplace_back(mountinfo_entry_t(mount_id, parent_id, makedev(_major, _minor),
+        parser_cache.emplace_back(mountinfo_entry(mount_id, parent_id, makedev(_major, _minor),
                                                     root, mount_point, mount_options,
                                                     optional_fields, filesystem_type, mount_source,
                                                     super_options));
@@ -115,7 +115,7 @@ const std::vector<mountinfo_entry_t> &Parsers::parseSelfMountinfo(bool cached)
     return parser_cache;
 }
 
-mountinfo_root_resolver::mountinfo_root_resolver(const std::vector<mountinfo_entry_t> &mount_infos)
+mountinfo_root_resolver::mountinfo_root_resolver(const std::vector<mountinfo_entry> &mount_infos)
 {
     for (const auto &mount_info : mount_infos)
     {
@@ -126,7 +126,7 @@ mountinfo_root_resolver::mountinfo_root_resolver(const std::vector<mountinfo_ent
     }
 }
 
-std::string mountinfo_root_resolver::resolveRootOf(const mountinfo_entry_t &mount_info) const
+std::string mountinfo_root_resolver::resolveRootOf(const mountinfo_entry &mount_info) const
 {
     auto dev = mount_info.getDevice();
     if (device_mount_map.contains(dev))

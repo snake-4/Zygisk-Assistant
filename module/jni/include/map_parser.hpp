@@ -6,10 +6,10 @@
 
 namespace Parsers
 {
-    class map_entry_t
+    class map_entry
     {
     public:
-        map_entry_t(uintptr_t address_start, uintptr_t address_end, uintptr_t offset,
+        map_entry(uintptr_t address_start, uintptr_t address_end, uintptr_t offset,
                     const std::string &perms, const std::string &pathname, dev_t device, ino_t inode);
 
         uintptr_t getAddressStart() const;
@@ -27,5 +27,5 @@ namespace Parsers
         ino_t inode;
     };
 
-    const std::vector<map_entry_t> &parseSelfMaps(bool cached = true);
+    const std::vector<map_entry> &parseSelfMaps(bool cached = true);
 }
