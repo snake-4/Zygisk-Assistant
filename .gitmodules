@@ -9,4 +9,4 @@
 	url = https://github.com/snake-4/aosp_fd_utils.git
 [submodule "module/jni/aosp_system_properties"]
 	path = module/jni/aosp_system_properties
-	url = https://github.com/snake-4/aosp_system_properties
+	url = https://github.com/topjohnwu/system_properties
