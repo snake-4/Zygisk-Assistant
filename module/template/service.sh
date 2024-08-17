@@ -1,7 +1,9 @@
 MODPATH="${0%/*}"
 . $MODPATH/common_func.sh
 
-# Recovery Mode
+### Conditional sensitive properties
+
+# Magisk Recovery Mode
 resetprop_if_match ro.boot.mode recovery unknown
 resetprop_if_match ro.bootmode recovery unknown
 resetprop_if_match vendor.boot.mode recovery unknown
@@ -12,11 +14,13 @@ if [ -n "$(resetprop ro.build.selinux)" ]; then
     resetprop --delete ro.build.selinux
 fi
 
-# SELinux file access time
+# Toybox cat is used to preserve the file access time
 if [ "$(toybox cat /sys/fs/selinux/enforce)" = "0" ]; then
     chmod 640 /sys/fs/selinux/enforce
     chmod 440 /sys/fs/selinux/policy
 fi
+
+### Conditional late sensitive properties
 
 {
 until [ "$(getprop sys.boot_completed)" = "1" ]; do
@@ -43,9 +47,6 @@ resetprop_if_diff vendor.boot.vbmeta.device_state locked
 
 # Other
 resetprop_if_diff sys.oem_unlock_allowed 0
-resetprop_if_diff ro.secure 1
 resetprop_if_diff ro.adb.secure 1
-resetprop_if_diff ro.build.type user
-resetprop_if_diff ro.build.tags release-keys
 
 }&
