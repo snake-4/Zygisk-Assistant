@@ -1,7 +1,7 @@
 import java.io.ByteArrayOutputStream
 
 plugins {
-    id("com.android.library") version "8.3.2" apply false
+    id("com.android.library") version "8.5.0" apply false
 }
 
 val commitHash: String by extra {
