@@ -9,9 +9,6 @@ resetprop_if_diff ro.vendor.boot.warranty_bit 0
 resetprop_if_diff ro.vendor.warranty_bit 0
 resetprop_if_diff ro.warranty_bit 0
 
-# Xiaomi
-resetprop_if_diff ro.secureboot.lockstate locked
-
 # Realme
 resetprop_if_diff ro.boot.realmebootstate green
 
