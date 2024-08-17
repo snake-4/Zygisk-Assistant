@@ -140,12 +140,6 @@ public:
             }
 
             doHideZygisk();
-
-            // [Why do we call unshare twice?]
-            // We call unshare twice to regenerate mount IDs.
-            // FDReopener handles the FD link problem mentioned in the unshare hook.
-            if (!new_mount_ns())
-                return;
         };
     }
 
