@@ -24,6 +24,7 @@ done
 for PROP in $(resetprop | grep -oE 'ro.*.build.type'); do
     resetprop_if_diff $PROP user
 done
+resetprop_if_diff ro.adb.secure 1
 resetprop_if_diff ro.debuggable 0
 resetprop_if_diff ro.force.debuggable 0
 resetprop_if_diff ro.secure 1
