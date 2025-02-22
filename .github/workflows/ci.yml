@@ -28,8 +28,8 @@ jobs:
         if: success()
         id: prepareArtifact
         run: |
-          echo "releaseName=$(basename module/build/out/*-release.zip .zip)" >> $GITHUB_OUTPUT
-          echo "debugName=$(basename module/build/out/*-debug.zip .zip)" >> $GITHUB_OUTPUT
+          echo "releaseName=$(basename module/build/outputs/zip/*-release.zip .zip)" >> $GITHUB_OUTPUT
+          echo "debugName=$(basename module/build/outputs/zip/*-debug.zip .zip)" >> $GITHUB_OUTPUT
 
       - name: Upload Release Artifact
         uses: actions/upload-artifact@v4
