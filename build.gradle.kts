@@ -1,16 +1,14 @@
 import java.io.ByteArrayOutputStream
 
 plugins {
-    id("com.android.library") version "8.5.0" apply false
+    id("com.android.library") version "8.8.1" apply false
 }
 
 val commitHash: String by extra {
-    val stdout = ByteArrayOutputStream()
-    rootProject.exec {
-        commandLine("git", "rev-parse", "--short", "HEAD")
-        standardOutput = stdout
+    val result = providers.exec {
+        commandLine("git", "rev-parse", "--verify", "--short", "HEAD")
     }
-    stdout.toString().trim()
+    result.standardOutput.asText.get().trim()
 }
 
 val moduleId by extra("zygisk-assistant")

@@ -14,7 +14,7 @@ val abiList: List<String> by rootProject.extra
 android {
     namespace = "com.example.library"
     compileSdkVersion = "android-34"
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.0.13004108"
     defaultConfig {
         minSdk = 21
         externalNativeBuild {
