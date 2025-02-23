@@ -35,16 +35,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.prepareArtifact.outputs.releaseName }}
-          path: "module/build/out/release"
+          path: "module/build/outputs/zip/release"
 
       - name: Upload Debug Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.prepareArtifact.outputs.debugName }}
-          path: "module/build/out/debug"
+          path: "module/build/outputs/zip/debug"
 
       - name: Create a release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: module/build/out/*.zip
+          files: module/build/outputs/zip/*.zip
