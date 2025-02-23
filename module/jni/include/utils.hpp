@@ -4,6 +4,7 @@
 #include <functional>
 #include "logging.hpp"
 #include "zygisk.hpp"
+#include "mountinfo_parser.hpp"
 
 #define DCL_HOOK_FUNC(ret, func, ...)         \
     ret (*old_##func)(__VA_ARGS__) = nullptr; \
@@ -36,4 +37,5 @@ namespace Utils
     int isUserAppUID(int uid);
     bool hookPLTByName(zygisk::Api *api, const std::string &libName, const std::string &symbolName, void *hookFunc, void **origFunc);
     int forkAndInvoke(const std::function<int()> &lambda);
+    const char *getExtErrorsBehavior(const Parsers::mountinfo_entry &entry);
 }

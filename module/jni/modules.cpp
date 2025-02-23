@@ -93,28 +93,26 @@ void doRemount()
         if (mount.getMountPoint() == "/data")
         {
             const auto &superOptions = mount.getSuperOptions();
+            if (!superOptions.contains("errors"))
+                break;
+
+            // Remount /data only if errors behavior is not the same as superblock's
+            const char *sb_errors = Utils::getExtErrorsBehavior(mount);
+            if (!sb_errors || superOptions.at("errors") == sb_errors)
+                break;
+
             const auto &mountOptions = mount.getMountOptions();
-
-            // If errors=remount-ro, remount it with errors=continue
-            if (superOptions.contains("errors") && superOptions.at("errors") == "remount-ro")
+            unsigned long flags = MS_REMOUNT;
+            for (const auto &flagName : mount_flags_procfs)
             {
-                unsigned long flags = MS_REMOUNT;
-                for (const auto &flagName : mount_flags_procfs)
-                {
-                    if (mountOptions.contains(flagName.first))
-                        flags |= flagName.second;
-                }
-
-                if (::mount(NULL, "/data", NULL, flags, "errors=continue") == 0)
-                {
-                    LOGD("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned 0", flags);
-                }
-                else
-                {
-                    LOGW("mount(NULL, \"/data\", NULL, 0x%lx, \"errors=continue\") returned -1: %d (%s)", flags, errno, strerror(errno));
-                }
+                if (mountOptions.contains(flagName.first))
+                    flags |= flagName.second;
             }
 
+            if (::mount(NULL, "/data", NULL, flags, (std::string("errors=") + sb_errors).c_str()) == 0)
+                LOGD("mount(NULL, \"/data\", NULL, 0x%lx, ...) returned 0", flags);
+            else
+                LOGW("mount(NULL, \"/data\", NULL, 0x%lx, ...) returned -1: %d (%s)", flags, errno, strerror(errno));
             break;
         }
     }
