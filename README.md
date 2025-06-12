@@ -1,7 +1,7 @@
 <h3 align="center">Zygisk Assistant</h3>
 
   <p align="center">
-    A Zygisk module that aims to hide the existence root and Zygisk.
+    A <a href="https://github.com/topjohnwu/zygisk-module-sample">Zygisk module</a> that aims to hide the existence root and Zygisk.
     <br />
     <br />
     <a href="https://github.com/snake-4/Zygisk-Assistant/issues">Report Bug</a>
@@ -15,6 +15,8 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
+
+The point of Zygisk Assistant is to hide memory maps created by mounting modules and set system property values to appear as if your device is locked.
 
 Using the **release** build is recommended over the debug build. Only use debug builds if you are going to make a bug report.
 
