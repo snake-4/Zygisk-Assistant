@@ -20,7 +20,7 @@ Using the **release** build is recommended over the debug build. Only use debug 
 
 ### KernelSU & APatch users:
 1. Install ZygiskNext.
-1. Make sure the unmount setting is enabled for the target app in the KernelSU/APatch Manager.
+1. Make sure the option `Umount modules/Exclude modifications` is enabled for the target app in the KernelSU/APatch Manager.
 1. Disable `Enforce DenyList` in ZygiskNext settings if there is one.
 
 ### Magisk users:
