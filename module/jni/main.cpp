@@ -110,16 +110,18 @@ public:
         // We dup() to get an untracked copy for the lambda and close the original to satisfy
         // the leak checker. The copy is exemptFd()'d to survive the fork.
         int rawCompanionFd = api->connectCompanion();
-        ASSERT_LOG(preAppSpecialize, rawCompanionFd != -1);
 
         int companionFd = -1;
         if (rawCompanionFd != -1)
         {
             companionFd = dup(rawCompanionFd);
             close(rawCompanionFd);
+            api->exemptFd(companionFd);
         }
-
-        ASSERT_LOG(preAppSpecialize, companionFd != -1 && api->exemptFd(companionFd));
+        else
+        {
+            LOGE("Companion connection failed. Daemon might be dead or out of FDs.");
+        }
 
         callbackFunction = [fd = companionFd]()
         {
@@ -196,6 +198,9 @@ void zygisk_companion_handler(int fd)
         }));
 
     ASSERT_LOG(zygisk_companion_handler, write(fd, &result, sizeof(result)) == sizeof(result));
+
+    // Close the file descriptor to prevent FD leaks in the root companion daemon
+    close(fd);
 }
 
 REGISTER_ZYGISK_MODULE(ZygiskModule)
