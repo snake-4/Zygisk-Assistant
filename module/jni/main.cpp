@@ -106,19 +106,8 @@ public:
         ASSERT_DO(preAppSpecialize, hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare), return);
         ASSERT_DO(preAppSpecialize, hookPLTByName("libandroid_runtime.so", "setresuid", new_setresuid, &old_setresuid), return);
 
-        // ZygiskNext 1.3.4+ tracks and closes the specific FD from connectCompanion() on return.
-        // We dup() to get an untracked copy for the lambda and close the original to satisfy
-        // the leak checker. The copy is exemptFd()'d to survive the fork.
-        int rawCompanionFd = api->connectCompanion();
-        ASSERT_LOG(preAppSpecialize, rawCompanionFd != -1);
-
         int companionFd = -1;
-        if (rawCompanionFd != -1)
-        {
-            companionFd = dup(rawCompanionFd);
-            close(rawCompanionFd);
-        }
-
+        ASSERT_LOG(preAppSpecialize, (companionFd = api->connectCompanion()) != -1);
         ASSERT_LOG(preAppSpecialize, companionFd != -1 && api->exemptFd(companionFd));
 
         callbackFunction = [fd = companionFd]()
@@ -126,7 +115,7 @@ public:
             // Call only once per process.
             callbackFunction = []() {};
             FDReopener::ScopedRegularReopener srr;
-
+            
             if (!new_mount_ns())
                 return;
 
