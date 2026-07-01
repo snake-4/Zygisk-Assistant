@@ -206,13 +206,25 @@ void doMrProp()
     int ret = __system_property_foreach(
         [](const prop_info *pi, void *)
         {
-            if (shouldResetProperty(pi))
-            {
-                // Overlapping pointers in strncpy is undefined behavior so make a copy.
-                char buffer[PROP_VALUE_MAX];
-                size_t length = Utils::safeStringCopy(buffer, pi->value, PROP_VALUE_MAX);
+            if (!shouldResetProperty(pi))
+                return;
 
-                __system_property_update(const_cast<prop_info *>(pi), buffer, length);
+            // Capture name and value first — once we delete, the pi pointer
+            // becomes invalid. strncpy uses overlapping regions so we go
+            // through a temporary buffer to avoid undefined behavior.
+            char name[PROP_NAME_MAX];
+            size_t nameLen = Utils::safeStringCopy(name, pi->name, sizeof(name));
+
+            char value[PROP_VALUE_MAX];
+            size_t valueLen = Utils::safeStringCopy(value, pi->value, sizeof(value));
+
+            // Delete the old (modified) entry and re-add a fresh one with the
+            // same name and original value. Passing prune=true compacts the
+            // trie so the modified entry no longer leaks metadata about its
+            // previous state. See https://github.com/snake-4/Zygisk-Assistant/issues/103
+            if (__system_property_delete(name, true) == 0 &&
+                __system_property_add(name, nameLen, value, valueLen) == 0)
+            {
                 resetCount++;
             }
         },
