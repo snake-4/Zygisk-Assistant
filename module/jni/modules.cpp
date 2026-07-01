@@ -219,4 +219,14 @@ void doMrProp()
         nullptr);
 
     LOGD("__system_property_foreach returned %d. resetCount=%d", ret, resetCount);
+
+    // After resetting modified properties, compact the property area to reclaim
+    // the space used by old entries. Without this, the property area leaks metadata
+    // about previously-modified props even after they're reset to their original
+    // values. See https://github.com/snake-4/Zygisk-Assistant/issues/103
+    if (resetCount > 0)
+    {
+        __system_property_compact();
+        LOGD("Compacted property area after resetting %d properties", resetCount);
+    }
 }
