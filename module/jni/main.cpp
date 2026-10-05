@@ -106,38 +106,43 @@ public:
         ASSERT_DO(preAppSpecialize, hookPLTByName("libandroid_runtime.so", "unshare", new_unshare, &old_unshare), return);
         ASSERT_DO(preAppSpecialize, hookPLTByName("libandroid_runtime.so", "setresuid", new_setresuid, &old_setresuid), return);
 
-        int companionFd = -1;
-        ASSERT_LOG(preAppSpecialize, (companionFd = api->connectCompanion()) != -1);
-        ASSERT_LOG(preAppSpecialize, companionFd != -1 && api->exemptFd(companionFd));
+        /*
+         * The companion FD must be closed before this callback returns, as Zygisk Next
+         * tracks it and flags modules that keep it open. So the namespace is created and
+         * the companion is invoked here, while only the rest is deferred to the hooks.
+         */
+        {
+            FDReopener::ScopedRegularReopener srr;
+            ASSERT_DO(preAppSpecialize, new_mount_ns(), return);
+        }
 
-        callbackFunction = [fd = companionFd]()
+        bool result = false;
+        int companionFd = api->connectCompanion();
+        ASSERT_LOG(preAppSpecialize, companionFd != -1);
+        if (companionFd != -1)
+        {
+            do
+            {
+                pid_t pid = getpid();
+                ASSERT_DO(preAppSpecialize, write(companionFd, &pid, sizeof(pid)) == sizeof(pid), break);
+                ASSERT_DO(preAppSpecialize, read(companionFd, &result, sizeof(result)) == sizeof(result), break);
+            } while (false);
+            close(companionFd);
+        }
+
+        if (result)
+            LOGD("Invoking the companion was successful.");
+        else
+            LOGW("Invoking the companion failed. Functionality will be limited in Zygote context!");
+
+        callbackFunction = [result]()
         {
             // Call only once per process.
             callbackFunction = []() {};
             FDReopener::ScopedRegularReopener srr;
-            
-            if (!new_mount_ns())
-                return;
 
-            bool result = false;
-            if (fd != -1)
-            {
-                do
-                {
-                    pid_t pid = getpid();
-                    ASSERT_DO(callbackFunction, write(fd, &pid, sizeof(pid)) == sizeof(pid), break);
-                    ASSERT_DO(callbackFunction, read(fd, &result, sizeof(result)) == sizeof(result), break);
-                } while (false);
-                close(fd);
-            }
-
-            if (result)
-                LOGD("Invoking the companion was successful.");
-            else
-            {
-                LOGW("Invoking the companion failed. Functionality will be limited in Zygote context!");
+            if (!result)
                 doUnmount();
-            }
 
             doHideZygisk();
         };

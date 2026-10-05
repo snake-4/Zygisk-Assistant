@@ -1,3 +1,6 @@
+## Unreleased
+* Fixed the companion FD being kept open, which Zygisk Next 1.5 reports as improper use of the companion API.
+
 ## 2.1.4
 * Fixed a problem causing Zygisk Assistant to be detectable.
 * Updated prop scripts.
